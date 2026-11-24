@@ -1300,6 +1300,19 @@ object SongPlayer {
     /** The app's name for [contextUri], "" when the app never played from it (B26). */
     fun knownContextName(contextUri: String): String = contextNames[contextUri].orEmpty()
 
+    /**
+     * Whether playback came from [contextUri]. Spotify can report an internal playlist URI for
+     * Liked Songs or another list played with an explicit order, so retain the context the app
+     * requested while the current item still belongs to that request.
+     */
+    fun isPlayingContext(contextUri: String): Boolean {
+        val now = _nowPlaying.value
+        if (now.contextUri == contextUri) return true
+        val requested = playedOrder?.takeIf { it.first == contextUri } ?: return false
+        val requestedItems = requested.second ?: contextRows[contextUri]
+        return requestedItems?.contains(now.uri) == true
+    }
+
     /** Liked Songs plays as its own context: Spotify maps it to the account's liked list. */
     fun registerLikedSongs(urls: List<String>) = registerContext(urls, LIKED_CONTEXT)
 

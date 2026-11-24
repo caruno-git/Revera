@@ -245,7 +245,7 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
     val shuffle = playerVm.shuffleState.value
     val np by SongPlayer.nowPlaying
     val isLiked = p.type == "liked" || p.type == "liked-artist"
-    val isThisContext = np.contextUri == p.uri || (isLiked && np.contextUri.contains(":collection"))
+    val isThisContext = SongPlayer.isPlayingContext(p.uri) || (isLiked && np.contextUri.contains(":collection"))
     val contextSaved by vm.contextSaved
     val savedTracks by vm.savedUris
     val smart = SmartShuffle.on.value == p.uri

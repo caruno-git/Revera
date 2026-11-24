@@ -631,7 +631,8 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
     val playing = playerVm.currentSongPlayingState.value
     val shuffle = playerVm.shuffleState.value
     val np by SongPlayer.nowPlaying
-    val isThisContext = np.contextUri == p.uri || ((p.type == "liked" || p.type == "liked-artist") && np.contextUri.contains(":collection"))
+    val isThisContext = SongPlayer.isPlayingContext(p.uri) ||
+        ((p.type == "liked" || p.type == "liked-artist") && np.contextUri.contains(":collection"))
     val saved by vm.savedUris
     val contextSaved by vm.contextSaved
 
