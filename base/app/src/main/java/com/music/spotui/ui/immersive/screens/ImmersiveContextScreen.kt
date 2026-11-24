@@ -437,16 +437,18 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
             if (isThisContext) vm.playSmart(p, p.tracks.firstOrNull { it.id == currentSongId })
         }
     }
-    // What the Shuffle pill does: start the list shuffled from a random song, and every tap again
-    // jumps to another random one, as the official app's big shuffle button did (asked on
-    // Discord: in 2.2.0 a tap while the list played only turned shuffle on or off). Turning
-    // shuffle off is the player's shuffle button; smart shuffle has its own button under the pill.
+    // Start another list shuffled from a random song. For the list already playing, keep the
+    // current song and only toggle shuffle; smart shuffle has its own button under the pill.
     fun onShuffle() {
         if (p.tracks.isEmpty()) return
+        if (isThisContext) {
+            if (smart) SmartShuffle.on.value = null
+            playerVm.updateShuffleState(if (smart) true else !shuffle)
+            return
+        }
         if (smart) return vm.playSmart(p, null)
         playerVm.updateShuffleState(true)
-        val others = if (isThisContext) p.tracks.filter { it.id != currentSongId } else p.tracks
-        vm.play(p, others.ifEmpty { p.tracks }.random(), sort)
+        vm.play(p, p.tracks.random(), sort)
     }
 
     val listState = rememberLazyListState()
