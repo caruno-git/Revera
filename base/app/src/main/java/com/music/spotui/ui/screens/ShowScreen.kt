@@ -101,7 +101,7 @@ fun ShowScreen(navController: NavController, showId: String, showName: String = 
     fun playAt(index: Int) {
         val song = items.getOrNull(index) ?: return
         vm.updateQueue(items)
-        SongPlayer.playSong(song.url, context, contextUri = "spotify:show:$showId")
+        SongPlayer.playSong(song.url, context, contextUri = page?.contextUri?.ifBlank { null } ?: "spotify:show:$showId")
         vm.updateSongState(song.coverUri, song.title, song.singer, true, song.id, index, song.album)
     }
 

@@ -214,7 +214,7 @@ internal fun TvShow(page: TvPage.Show, onPlayed: () -> Unit) {
         failed && s == null -> TvRetry { attempt++ }
         s == null -> TvShelfSkeleton(rows = 2)
         else -> TvShowPage(s) { ep ->
-            SongPlayer.playSong(ep.url, contextUri = "spotify:show:${page.id}")
+            SongPlayer.playSong(ep.url, contextUri = s.contextUri.ifBlank { "spotify:show:${page.id}" })
             Graph.currentSongState.updateSongState(ep.coverUri, ep.title, ep.singer, true, ep.id, 0, ep.album)
             onPlayed()
         }

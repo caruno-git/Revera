@@ -703,10 +703,10 @@ class MainActivity : AppCompatActivity() {
                 // A collaborative-playlist invitation (…?pt=) or a spotify.link short link: kept / resolved there.
                 if (com.music.spotui.data.api.InviteLinks.handle(link)) return
                 val uri = spotifyUri(link) ?: return
-                // A shared list (or artist, podcast) opens on its page, as in the official app
+                // A shared list (or artist, podcast, audiobook) opens on its page, as in the official app
                 // (reported: a shared playlist started playing and was never shown). A song or an
                 // episode still plays.
-                if (uri.split(':').getOrNull(1) in setOf("playlist", "album", "artist", "show")) {
+                if (uri.split(':').getOrNull(1) in setOf("playlist", "album", "artist", "show", "audiobook")) {
                     com.music.spotui.data.api.InviteLinks.page.value = uri
                     return
                 }
@@ -729,7 +729,7 @@ class MainActivity : AppCompatActivity() {
 
     /** `https://open.spotify.com/intl-fr/album/{id}?si=…` -> `spotify:album:{id}`. */
     private fun spotifyUri(link: String): String? {
-        val m = Regex("(?:open|www|play)\\.spotify\\.com/(?:intl-[a-z-]+/)?(track|album|playlist|artist|show|episode)/([A-Za-z0-9]{22})").find(link) ?: return null
+        val m = Regex("(?:open|www|play)\\.spotify\\.com/(?:intl-[a-z-]+/)?(track|album|playlist|artist|show|episode|audiobook)/([A-Za-z0-9]{22})").find(link) ?: return null
         return "spotify:${m.groupValues[1]}:${m.groupValues[2]}"
     }
 }

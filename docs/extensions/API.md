@@ -300,11 +300,13 @@ outcome (section 3, "Outcomes"). Calls are synchronous: return the answer, do no
 The input of every hook, and of the `track` event, is this track:
 
 ```
-{ id, uri, title, artist, artists, album, durationMs, isrc?, cover? }
+{ id, uri, kind, title, artist, artists, album, durationMs, isrc?, cover? }
 ```
 
-`id` is Spotify's track id (empty for a local file), `artist` the first of `artists`. `isrc` and
-`cover` are absent when unknown (`null` inside a `playback` event).
+`id` is Spotify's id (empty for a local file), `uri` its full Spotify uri (`spotify:track:…`,
+`spotify:episode:…` for a podcast episode or an audiobook chapter), `kind` one of `track`, `episode`
+or `ad`, and `artist` the first of `artists`. `isrc` and `cover` are absent when unknown (`null`
+inside a `playback` event).
 
 ### `lyrics`
 

@@ -384,9 +384,12 @@ private fun SkipIcon(back: Boolean) {
     }
 }
 
-/** The show id carried by the played context ("spotify:show:<id>"), "" when there is none. */
-internal fun episodeShowId(contextUri: String): String =
-    contextUri.takeIf { it.startsWith("spotify:show:") }?.removePrefix("spotify:show:").orEmpty()
+/** The show / book id carried by the played context, "" when there is none. */
+internal fun episodeShowId(contextUri: String): String = when {
+    contextUri.startsWith("spotify:show:") -> contextUri.removePrefix("spotify:show:")
+    contextUri.startsWith("spotify:audiobook:") -> contextUri.removePrefix("spotify:audiobook:")
+    else -> ""
+}
 
 /**
  * Opens the page of the show the playing episode [episodeUri] belongs to, with its episodes: the

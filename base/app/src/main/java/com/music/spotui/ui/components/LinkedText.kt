@@ -19,17 +19,17 @@ import com.music.spotui.data.api.InviteLinks
  * Descriptions (show, episode, audiobook, artist bio, playlist) with their links made tappable.
  * Same text, same layout: the [AnnotatedString] goes to the page's own `Text`, so lines, "more"
  * toggles and truncation stay as they were. A Spotify link (open.spotify.com/…, spotify:…) to a
- * playlist, album, artist or show opens its page in the app; any other link opens in the browser.
+ * playlist, album, artist, show or audiobook opens its page in the app; other links open in the browser.
  */
 private val LINK = Regex(
-    """(?:https?://|www\.)[^\s<>"']+|spotify:(?:playlist|album|artist|show|track|episode):[A-Za-z0-9]{22}""",
+    """(?:https?://|www\.)[^\s<>"']+|spotify:(?:playlist|album|artist|show|track|episode|audiobook):[A-Za-z0-9]{22}""",
     RegexOption.IGNORE_CASE,
 )
 private val PAGE_LINK = Regex(
-    """(?:open|www|play)\.spotify\.com/(?:intl-[a-z-]+/)?(playlist|album|artist|show)/([A-Za-z0-9]{22})""",
+    """(?:open|www|play)\.spotify\.com/(?:intl-[a-z-]+/)?(playlist|album|artist|show|audiobook)/([A-Za-z0-9]{22})""",
     RegexOption.IGNORE_CASE,
 )
-private val URI = Regex("""spotify:(playlist|album|artist|show|track|episode):([A-Za-z0-9]{22})""", RegexOption.IGNORE_CASE)
+private val URI = Regex("""spotify:(playlist|album|artist|show|track|episode|audiobook):([A-Za-z0-9]{22})""", RegexOption.IGNORE_CASE)
 
 /** [text] with every link in it tappable, in [linkColor] and underlined. */
 @Composable
@@ -60,7 +60,7 @@ fun openDescriptionLink(context: android.content.Context, link: String) {
         if (link.startsWith("http", ignoreCase = true) && InviteLinks.handle(link)) return
         val uri = URI.find(link)?.let { "spotify:${it.groupValues[1].lowercase()}:${it.groupValues[2]}" }
             ?: PAGE_LINK.find(link)?.let { "spotify:${it.groupValues[1].lowercase()}:${it.groupValues[2]}" }
-        if (uri != null && uri.substringAfter(':').substringBefore(':') in setOf("playlist", "album", "artist", "show")) {
+        if (uri != null && uri.substringAfter(':').substringBefore(':') in setOf("playlist", "album", "artist", "show", "audiobook")) {
             InviteLinks.page.value = uri
             return
         }

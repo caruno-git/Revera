@@ -1417,16 +1417,40 @@ object Extensions {
         return if (offline != null) PlaybackEvent.ORIGIN_DOWNLOAD to offline.providerId else PlaybackEvent.ORIGIN_LOCAL_FILE to null
     }
 
-    /** The song playing in Myspoti, as hooks receive it. */
+    /** What is playing in Myspoti, as hooks receive it: a song, an episode or an ad. */
     fun currentTrack(): TrackInfo? {
         val t = runCatching { SongPlayer.currentLyricsTrack() }.getOrNull() ?: return null
-        return trackInfo(t.trackId, t.title, t.artist, t.album, t.durationMs, t.coverUrl)
+        /*
+            A podcast episode / audiobook chapter has no track id (SongPlayer.trackIdOf returns "").
+            Take its uri from what is playing so rich-presence extensions get the real id and kind instead of an empty uri (reported for audiobooks).
+        */
+        val playing = SongPlayer.nowPlaying.value.uri
+        val uri = playing.takeIf { it.startsWith("spotify:") }.orEmpty()
+        return trackInfo(t.trackId, t.title, t.artist, t.album, t.durationMs, t.coverUrl, uri)
     }
 
-    fun trackInfo(trackId: String, title: String, artist: String, album: String, durationMs: Long, cover: String?): TrackInfo {
+    /**
+     * The track shape hooks receive. [uri] is used when known; otherwise it is built from
+     * [trackId], which may itself be an "episode:<id>" key of a downloaded episode.
+     */
+    fun trackInfo(
+        trackId: String, title: String, artist: String, album: String, durationMs: Long, cover: String?, uri: String? = null,
+    ): TrackInfo {
+        val fullUri = uri?.takeIf { it.isNotBlank() }
+            ?: when {
+                trackId.startsWith("episode:") -> "spotify:episode:" + trackId.removePrefix("episode:")
+                trackId.isBlank() -> ""
+                else -> "spotify:track:$trackId"
+            }
+        val id = fullUri.substringAfterLast(':').takeIf { fullUri.isNotBlank() }.orEmpty()
+        val kind = when {
+            fullUri.startsWith("spotify:episode:") -> "episode"
+            fullUri.startsWith("spotify:ad:") -> "ad"
+            else -> "track"
+        }
         val artists = artist.split(", ").map { it.trim() }.filter { it.isNotEmpty() }
         return TrackInfo(
-            id = trackId, uri = if (trackId.isBlank()) "" else "spotify:track:$trackId", title = title,
+            id = id, uri = fullUri, kind = kind, title = title,
             artist = artists.firstOrNull().orEmpty(), artists = artists, album = album, durationMs = durationMs,
             cover = cover?.takeIf { it.startsWith("http") },
         )

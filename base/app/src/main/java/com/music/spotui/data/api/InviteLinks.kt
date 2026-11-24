@@ -73,10 +73,18 @@ object InviteLinks {
             if (invite != null) { pending.value = invite; return@launch }
             BLEND.find(target)?.let { blend.value = BlendLink(it.groupValues[1]); return@launch }
             // Not an invitation: the item the short link leads to is played, as a direct link is.
-            val m = Regex("""spotify\.com/(?:intl-[a-z-]+/)?(track|album|playlist|artist|show|episode)/([A-Za-z0-9]{22})""").find(target) ?: return@launch
+            val m = Regex("""spotify\.com/(?:intl-[a-z-]+/)?(track|album|playlist|artist|show|episode|audiobook)/([A-Za-z0-9]{22})""").find(target) ?: return@launch
+
+            val kind = m.groupValues[1]
+            val uri = "spotify:$kind:${m.groupValues[2]}"
+            // A book opens on its chapters ("play" has no book context here), a song or episode plays.
+            if (kind == "audiobook") {
+                page.value = uri;
+                return@launch
+            }
             runCatching {
                 MyspotiRuntime.api.ready.first { it }
-                MyspotiRuntime.api.player.play("spotify:${m.groupValues[1]}:${m.groupValues[2]}")
+                MyspotiRuntime.api.player.play(uri)
             }
         }
         return true

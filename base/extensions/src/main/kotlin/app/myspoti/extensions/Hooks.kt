@@ -9,7 +9,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 
-/** A song as every hook and event receives it. */
+/** A song or an episode as every hook and event receives it. */
 @Serializable
 data class TrackInfo(
     /** Spotify's track id ("4uLU6hMCjMI75M1A2tKUQC"), empty for a local file. */
@@ -23,6 +23,8 @@ data class TrackInfo(
     val durationMs: Long,
     val isrc: String? = null,
     val cover: String? = null,
+    /** "track", "episode" (a podcast episode or an audiobook chapter) or "ad". */
+    val kind: String = "track",
 ) {
     fun toJson(): String = ExtJson.encodeToString(serializer(), this)
 }

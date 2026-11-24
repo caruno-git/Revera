@@ -29,6 +29,7 @@ import com.music.spotui.data.entity.LibraryEntry
 import com.music.spotui.data.entity.PodcastModel
 import com.music.spotui.data.entity.SearchResults
 import com.music.spotui.data.entity.ShowPage
+import com.music.spotui.data.entity.showContextUri
 import com.music.spotui.data.entity.SongsModel
 import com.music.spotui.data.local.LocalFileMatch
 import com.music.spotui.data.local.LocalMusic
@@ -551,7 +552,7 @@ class Api constructor(
             emit(Response.Error(failure.message ?: "error"))
             return@flow
         }
-        SongPlayer.registerContext(rows.map { it.url }, uri)
+        SongPlayer.registerContext(rows.map { it.url }, showContextUri(showId, book?.uri, audiobook))
         emit(Response.Success(pageOf(showId, head, book, rows, audiobook)))
     }
 
@@ -578,7 +579,7 @@ class Api constructor(
             narrators = book?.narrators.orEmpty(),
             audiobook = audiobook,
         )
-        return ShowPage(model, rows, audiobook, cover)
+        return ShowPage(model, rows, audiobook, cover, showContextUri(showId, book?.uri, audiobook))
     }
 
     /** One episode (or chapter) by raw Spotify id, for the episode page. */
