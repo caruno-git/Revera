@@ -4032,21 +4032,25 @@ object SongPlayer {
 
     /**
      * [song] ("catalog:<uri>", a song of another provider) as the same recording on Spotify (by its ISRC, else the
-     * match gate), played alone; a short message when Spotify is not asked (signed out, turned off) or has no such
+     * match gate), played alone; a short message when Spotify is not asked (signed out) or has no such
      * recording, so the tap is never lost.
      */
     private fun playCatalogSong(song: String, context: Context?, askExtensions: Boolean) {
         val uri = song.removePrefix(com.music.spotui.data.catalog.CatalogRuntime.PLAY_PREFIX)
+        val request = handoffGeneration.get()
+        val session = sessionGen.get()
         app.myspoti.host.android.MyspotiRuntime.scope.launch {
             val m = try { com.music.spotui.data.catalog.CatalogRuntime.spotifyMatchFor(uri) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
                 com.music.spotui.data.catalog.SpotifyMatch.Unavailable(e.message ?: e.javaClass.simpleName)
             }
+            if (request != handoffGeneration.get() || session != sessionGen.get()) return@launch
             if (m !is com.music.spotui.data.catalog.SpotifyMatch.Found) {
                 AppLog.d("catalog: $uri not played on Spotify: $m")
                 com.music.spotui.data.catalog.SpotifyMatch.message(m)?.let { android.widget.Toast.makeText(Graph.app, it, android.widget.Toast.LENGTH_SHORT).show() }
                 return@launch
             }
             val (id, t) = m.id to m.track
+            AppLog.d("catalog: $uri resolved to spotify:track:$id for playback")
             playSong(buildSpotifyPlayQuery(id, t.name, t.artists.joinToString(", ") { it.name }), context, askExtensions = askExtensions, alone = true)
         }
     }

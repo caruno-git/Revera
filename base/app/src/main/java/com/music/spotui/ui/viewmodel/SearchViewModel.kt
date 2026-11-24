@@ -74,10 +74,6 @@ class SearchViewModel constructor(private val repository: AppRepository = Graph.
         }
     }
 
-    fun updateSongState(coverUri: String, title: String, singer: String, playingState: Boolean, songId : Int, songIndex : Int = 0, album : String = "") {
-        currentSongState.updateSongState(coverUri, title, singer, playingState, songId, songIndex, album)
-    }
-
     fun search(query: String) {
         this.query = query
         searchJob?.cancel()

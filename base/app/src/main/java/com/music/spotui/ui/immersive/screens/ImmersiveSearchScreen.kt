@@ -176,7 +176,6 @@ fun ImmersiveSearchScreen(navController: NavController) {
         // A radio from the tapped track (queue = this song + recommendations), not the list.
         vm.startRadioFromSong(song)
         SongPlayer.playSong(song.url, context, songs = listOf(song), alone = true)
-        vm.updateSongState(song.coverUri, song.title, song.singer, true, song.id, 0, song.album)
     }
 
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().background(Immersive.Page)) {
@@ -307,7 +306,6 @@ private fun openRecent(item: RecentItem, navController: NavController, vm: Searc
         "song" -> item.toSong()?.let { song ->
             vm.startRadioFromSong(song)
             SongPlayer.playSong(song.url, context, songs = listOf(song), alone = true)
-            vm.updateSongState(song.coverUri, song.title, song.singer, true, song.id, 0, song.album)
         }
         "artist" -> navController.navigate(artistRoute(item.name, item.key.takeIf { it != item.name }.orEmpty()))
         "album" -> navController.navigate(albumRoute(item.name, item.singer, item.key.takeIf { it != item.name }.orEmpty()))

@@ -76,6 +76,9 @@ object CatalogRuntime {
 
     private val spotify by lazy { ApiProvider(MetadataOrder.SPOTIFY, MyspotiRuntime.spotify.search, MyspotiRuntime.spotify.catalog) }
 
+    // Playback needs the account's track id even when Spotify is disabled for browsing metadata.
+    private val playbackSpotify by lazy { ProviderChain(listOf(spotify)) }
+
     /** The ids of the catalog for the listen sync: a track without a Spotify id, looked up. */
     val trackIds by lazy {
         CatalogTrackIds({ chain() }, scope, onFound = { MyspotiRuntime.scope.launch { com.music.spotui.di.AccountSync.listen.refresh() } })
@@ -150,7 +153,8 @@ object CatalogRuntime {
 
     /**
      * The Spotify track of [uri], a track of another provider, with its title and artists: by its ISRC, else the
-     * match gate. Null when Spotify is not asked (signed out, turned off), has no such recording, or did not answer.
+     * match gate. Uses the signed-in account regardless of the browsing metadata order.
+     * Null when signed out, Spotify has no such recording, or did not answer.
      */
     suspend fun spotifyTrackFor(uri: String): Pair<String, app.myspoti.api.Track>? =
         (spotifyMatchFor(uri) as? SpotifyMatch.Found)?.let { it.id to it.track }
@@ -163,21 +167,9 @@ object CatalogRuntime {
     suspend fun spotifyMatchFor(uri: String): SpotifyMatch = SpotifyMatch.withRetries { lookUpOnSpotify(uri) }
 
     private suspend fun lookUpOnSpotify(uri: String): SpotifyMatch {
-        val c = chain()
-        spotifyOf(c) ?: return SpotifyMatch.NotAsked
-        val t = try { c.track(uri) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
-            return SpotifyMatch.Unavailable("$uri not read: ${e.message ?: e.javaClass.simpleName}")
-        }
-        known(uri)?.let { return SpotifyMatch.Found(it, t) }
-        val isrc = runCatching { c.isrc(uri) }.getOrNull()
-        return when (val a = c.counterpartAnswer(MetadataOrder.SPOTIFY, t.name, t.artists.firstOrNull()?.name.orEmpty(), t.durationMs, isrc)) {
-            is app.myspoti.catalog.Counterpart.Found -> {
-                val id = ItemUri.parse(a.hit.track.uri).id
-                keep(uri, id)
-                SpotifyMatch.Found(id, t)
-            }
-            app.myspoti.catalog.Counterpart.Absent -> SpotifyMatch.Absent
-            is app.myspoti.catalog.Counterpart.Unknown -> SpotifyMatch.Unavailable(a.why)
+        val target = if (signedIn()) playbackSpotify else null
+        return SpotifyMatch.lookup(uri, chain(), target, known(uri)).also { match ->
+            if (match is SpotifyMatch.Found) keep(uri, match.id)
         }
     }
 

@@ -248,8 +248,6 @@ fun SumUpSearchScreen(
                                 "song" -> item.toSong()?.let { song ->
                                     searchViewModel.startRadioFromSong(song)
                                     SongPlayer.playSong(song.url, context, songs = listOf(song), alone = true)
-                                    searchViewModel.updateSongState(
-                                        song.coverUri, song.title, song.singer, true, song.id, 0, song.album)
                                 }
                                 "artist" -> navController.navigate(artistRoute(item.name, item.key.takeIf { it != item.name }.orEmpty()))
                                 "album" -> navController.navigate(albumRoute(item.name, item.singer, item.key.takeIf { it != item.name }.orEmpty()))
@@ -562,15 +560,6 @@ fun SearchSongRow(
                     // recommendations) rather than queuing the whole search list.
                     searchViewModel.startRadioFromSong(song)
                     SongPlayer.playSong(song.url, context, songs = listOf(song), alone = true)
-                    searchViewModel.updateSongState(
-                        song.coverUri,
-                        song.title,
-                        song.singer,
-                        true,
-                        song.id,
-                        0,
-                        song.album,
-                    )
                 },
             ),
     ) {
