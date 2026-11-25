@@ -160,6 +160,8 @@ object SongPlayer {
     private fun intendPlaying() { wantPlayingUntil = SystemClock.elapsedRealtime() + 4000; wantPausedUntil = 0; reconcileAfter(intentEnded, 4000) }
     private fun intendPaused() { wantPausedUntil = SystemClock.elapsedRealtime() + 1500; wantPlayingUntil = 0; reconcileAfter(intentEnded, 1500) }
 
+    private val mirrorPauseGuard = MirrorPauseGuard()
+
     /**
      * Puts the screen back on what the page last said once a hold is over (a play or pause
      * wanted, a song shown before it plays). The page pushes changes only, and a state read again
@@ -269,7 +271,14 @@ object SongPlayer {
             com.music.spotui.data.preferences.isLyricsWordSync(Graph.app)
         restoreLastTrack(state)
         restoreRepeat(state)
-        scope.launch { api.player.state.collect { s -> if (acceptsSessionUpdates()) applyState(s) } }
+        scope.launch { api.player.state.collect { s ->
+            // A mirrored page that starts a song takes the audio focus in Chromium. Remember it:
+            // the system's pause that follows belongs to that page, not to the user (see below).
+            if (!AccountSync.holdsSpotifyPage) mirrorPauseGuard.cleared()
+            else if (s != null && LocalPlayer.active.value)
+                mirrorPauseGuard.pageState(s.item?.uri, !s.isPaused, SystemClock.elapsedRealtime())
+            if (acceptsSessionUpdates()) applyState(s)
+        } }
         AccountSync.attach()
         NativeAudio.attach()
         // Another device plays (the phone as a remote): the state is read again every few seconds
@@ -425,6 +434,10 @@ object SongPlayer {
         // "pause" to a paused player while the session still said playing (#108).
         override fun play() { SongPlayer.play(by = "media session"); pushNotification(null, boundState?.likeState?.value ?: false) }
         override fun pause() { SongPlayer.pause(by = "media session"); pushNotification(null, boundState?.likeState?.value ?: false) }
+        override fun ignoreSystemPause(): Boolean {
+            if (!LocalPlayer.active.value || !SongPlayer.isPlaying() || !AccountSync.holdsSpotifyPage) return false
+            return mirrorPauseGuard.echoes(SystemClock.elapsedRealtime())
+        }
         override fun next() = SongPlayer.next(by = "media session")
         override fun previous() = SongPlayer.previous(by = "media session")
         override fun seekTo(ms: Long) = SongPlayer.seekTo(ms)

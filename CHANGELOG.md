@@ -10,6 +10,7 @@ Each release on GitHub shows its section below. The app shows it too when it off
 ## Unreleased
 
 - **Spotify playback**: Pause now controls the Web Player when it is playing instead of sending the command to an idle native engine.
+- **Playback**: Music no longer pauses by itself when a mirrored Spotify song starts unheard in the Web Player and Android sends a pause to our media session.
 
 ## 1.0.8
 

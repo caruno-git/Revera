@@ -119,6 +119,11 @@ interface PlaybackControls {
     fun skipBy(deltaMs: Long) {}
     /** A row of the car's queue was tapped: [id] is its [QueueEntry.id] (see [PlaybackService.updateQueue]). */
     fun skipToQueueItem(id: Long) {}
+    /**
+     * True when a pause from the system is the echo of our own Web Player taking the audio focus
+     * for a mirrored (unheard) song: not the user's pause, so it must not stop the local player.
+     */
+    fun ignoreSystemPause(): Boolean = false
 }
 
 /** Android Auto / media browser content. */
@@ -254,6 +259,20 @@ class PlaybackService : MediaBrowserServiceCompat() {
         if (c == null) android.util.Log.w("Myspoti", "media session: $name dropped, the player is not attached yet") else c.run()
     }
 
+    /**
+     * A pause from a controller. Android also pauses the active session when another player takes
+     * the audio focus: our own Web Player does that for a mirrored song it plays unheard beside the
+     * local player. That pause is ours alone and must not stop what we are hearing; every other
+     * pause (shade, headset, car, another app) goes through as before.
+     */
+    private inline fun systemPause(name: String, run: PlaybackControls.() -> Unit) {
+        if (controls?.ignoreSystemPause() == true) {
+            AppLog.d("media session: $name ignored, mirrored page took the focus")
+            return
+        }
+        command(name, wake = false, run)
+    }
+
     /** A transport command from the system: on a podcast episode the earbuds skip 15 s (see [HeadsetButtons]). */
     private fun headset(cmd: HeadsetButtons.Command) {
         val episode = controls?.isEpisode == true
@@ -271,7 +290,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
     private val callback = object : MediaSessionCompat.Callback() {
         override fun onPlay() = command("play") { play() }
         override fun onPrepare() { AppLog.d("media session: prepare") }
-        override fun onPause() = command("pause", wake = false) { pause() }
+        override fun onPause() = systemPause("pause") { pause() }
         override fun onSkipToNext() = headset(HeadsetButtons.Command.NEXT)
         override fun onSkipToPrevious() = headset(HeadsetButtons.Command.PREVIOUS)
         override fun onFastForward() = headset(HeadsetButtons.Command.FAST_FORWARD)
@@ -287,7 +306,7 @@ class PlaybackService : MediaBrowserServiceCompat() {
             return super.onMediaButtonEvent(mediaButtonEvent)
         }
         override fun onSeekTo(pos: Long) = command("seek", wake = false) { seekTo(pos) }
-        override fun onStop() = command("stop", wake = false) { pause() }
+        override fun onStop() = systemPause("stop") { pause() }
         override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) {
             // The "recent" item of the resumption root (see onGetRoot): play on where the last session stopped.
             if (mediaId == RESUME_ID) command("resume") { play() } else command("play $mediaId") { playFromMediaId(mediaId) }
