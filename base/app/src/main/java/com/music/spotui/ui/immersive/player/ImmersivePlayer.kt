@@ -17,6 +17,14 @@ import com.music.spotui.ui.components.artworkLoop
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,6 +88,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -90,6 +99,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
@@ -552,6 +562,19 @@ fun ImmersivePlayer(
     val tint by animateColorAsState(playerTintOf(tintPalette), tween(com.music.spotui.ui.immersive.motion.ImmersiveMotion.TINT_MS), label = "playerTint")
 
     var panel by rememberSaveable { mutableIntStateOf(Panel.NONE) }
+    var lyricsFullscreen by rememberSaveable { mutableStateOf(false) }
+    val reduceMotion = com.music.spotui.ui.look.rememberReduceMotion()
+    val lyricsMotionMs = if (reduceMotion) 0 else PANEL_TRAVEL_MS
+    // Move the same list between layouts: expanding keeps manual scroll, translation, selection
+    // and the playhead alive, including when the window switches to the landscape layout.
+    val lyricsContent = remember {
+        movableContentOf<PaddingValues> { insets ->
+            ImmersiveLyricsPanel(
+                Modifier.fillMaxSize(), insets,
+                onExpand = if (lyricsFullscreen) null else ({ lyricsFullscreen = true }),
+            )
+        }
+    }
     var showMenu by remember { mutableStateOf(false) }
     var showDevices by remember { mutableStateOf(false) }
     var showQuality by remember { mutableStateOf(false) }
@@ -633,7 +656,9 @@ fun ImmersivePlayer(
     }
 
     // Back leaves the panel first; the sheet (outside) closes on the next one.
-    BackHandler(enabled = panel != Panel.NONE) { panel = Panel.NONE }
+    BackHandler(enabled = panel != Panel.NONE) {
+        if (lyricsFullscreen) lyricsFullscreen = false else panel = Panel.NONE
+    }
 
     // The wave that leaves the cover when a mix is over, over everything.
     // Not over an open panel: the lyrics or the queue drawing in and springing back with the mix
@@ -680,6 +705,10 @@ fun ImmersivePlayer(
                 actions = actions,
                 tint = tint,
                 panel = panel,
+                lyricsContent = lyricsContent,
+                lyricsFullscreen = lyricsFullscreen && lyricsOpen,
+                onCollapseLyrics = { lyricsFullscreen = false },
+                lyricsMotionMs = lyricsMotionMs,
                 pauseScale = pauseScale,
                 volume = volume,
                 coverSwipe = coverSwipe,
@@ -690,8 +719,8 @@ fun ImmersivePlayer(
                 gapPx = gapPx,
                 onPreviousStep = onPreviousWithAnim,
                 onNextStep = onNextWithAnim,
-                onToggleLyrics = { panel = if (lyricsOpen) Panel.NONE else Panel.LYRICS },
-                onToggleQueue = { panel = if (queueOpen) Panel.NONE else Panel.QUEUE },
+                onToggleLyrics = { lyricsFullscreen = false; panel = if (lyricsOpen) Panel.NONE else Panel.LYRICS },
+                onToggleQueue = { lyricsFullscreen = false; panel = if (queueOpen) Panel.NONE else Panel.QUEUE },
                 onOpenDevices = { showDevices = true },
                 onMore = if (navController != null && state.song != null) ({ showMenu = true }) else null,
                 onSource = { showQuality = true },
@@ -745,7 +774,7 @@ fun ImmersivePlayer(
                     ) { shown ->
                         val inset = PaddingValues(start = left, end = left, top = 12.dp, bottom = 12.dp)
                         when (shown) {
-                            Panel.LYRICS -> ImmersiveLyricsPanel(Modifier.fillMaxSize(), inset)
+                            Panel.LYRICS -> lyricsContent(inset)
                             Panel.QUEUE -> ImmersiveQueuePanel(Modifier.fillMaxSize(), inset)
                             else -> Box(Modifier.fillMaxSize())
                         }
@@ -916,16 +945,26 @@ fun ImmersivePlayer(
                             state = state, actions = actions, tint = tint, scrolls = scrolls, collapse = { p() },
                             coverSwipe = coverSwipe,
                             onMore = if (navController != null && state.song != null) ({ showMenu = true }) else null,
+                            onCollapseLyrics = if (lyricsFullscreen && lyricsOpen) ({ lyricsFullscreen = false }) else null,
                         )
                     }
                 }
 
+                AnimatedVisibility(
+                    visible = !lyricsFullscreen || !lyricsOpen,
+                    enter = fadeIn(tween(lyricsMotionMs)) + expandVertically(
+                        tween(lyricsMotionMs, easing = FastOutSlowInEasing), expandFrom = Alignment.Bottom,
+                    ) + slideInVertically(tween(lyricsMotionMs, easing = FastOutSlowInEasing)) { it / 2 },
+                    exit = fadeOut(tween(lyricsMotionMs / 2)) + shrinkVertically(
+                        tween(lyricsMotionMs, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Bottom,
+                    ) + slideOutVertically(tween(lyricsMotionMs, easing = FastOutSlowInEasing)) { it / 2 },
+                    modifier = Modifier.align(Alignment.CenterHorizontally).zIndex(2f),
+                ) {
                 Column(
                     modifier = Modifier
                         .widthIn(max = PLAYER_MAX_WIDTH + PLAYER_GUTTER * 2)
                         .fillMaxWidth()
                         .padding(horizontal = PLAYER_GUTTER)
-                        .align(Alignment.CenterHorizontally)
                         .zIndex(2f),
                 ) {
                     val showVolume = com.music.spotui.data.preferences.PlayerVolumePref.on
@@ -934,12 +973,13 @@ fun ImmersivePlayer(
                         showVolume = showVolume,
                         onPreviousStep = onPreviousWithAnim,
                         onNextStep = onNextWithAnim,
-                        onToggleLyrics = { panel = if (lyricsOpen) Panel.NONE else Panel.LYRICS },
-                        onToggleQueue = { panel = if (queueOpen) Panel.NONE else Panel.QUEUE },
+                        onToggleLyrics = { lyricsFullscreen = false; panel = if (lyricsOpen) Panel.NONE else Panel.LYRICS },
+                        onToggleQueue = { lyricsFullscreen = false; panel = if (queueOpen) Panel.NONE else Panel.QUEUE },
                         onOpenDevices = { showDevices = true },
                         onSource = { showQuality = true },
                         onSourceLong = { showNerd = true },
                     )
+                }
                 }
                 }
                 }
@@ -1141,6 +1181,7 @@ private fun RowScope.PlayerCredits(
     collapse: () -> Float,
     coverSwipe: CoverSwipeController,
     onMore: (() -> Unit)?,
+    onCollapseLyrics: (() -> Unit)? = null,
 ) {
     val lineH = if (state.adPlaying) 24.sp else 23.sp
     Column(
@@ -1202,6 +1243,17 @@ private fun RowScope.PlayerCredits(
         }
     }
     Spacer(Modifier.width(10.dp))
+    val actionsWidth by animateDpAsState(
+        if (onMore != null || onCollapseLyrics != null) 76.dp else 34.dp,
+        tween(if (com.music.spotui.ui.look.rememberReduceMotion()) 0 else PANEL_TRAVEL_MS),
+        label = "lyricsHeaderActionsWidth",
+    )
+    // Keep the cover and credits in the same layout while the actions dissolve in place.
+    Crossfade(targetState = onCollapseLyrics != null, modifier = Modifier.width(actionsWidth), label = "lyricsHeaderActions") { expanded ->
+    Row(verticalAlignment = Alignment.CenterVertically) {
+    if (expanded) {
+        LyricsFullscreenActions(onCollapse = { onCollapseLyrics?.invoke() })
+    } else {
     CircleGlyph(
         icon = if (state.liked) Icons.Rounded.Star else Icons.Rounded.StarBorder,
         contentDescription = stringResource(if (state.liked) R.string.immersive_player_unlike else R.string.immersive_player_like),
@@ -1215,6 +1267,9 @@ private fun RowScope.PlayerCredits(
             contentDescription = stringResource(R.string.immersive_player_more),
             onClick = onMore,
         )
+    }
+    }
+    }
     }
 }
 
@@ -1287,6 +1342,10 @@ private fun LandscapePlayer(
     actions: ImmersivePlayerActions,
     tint: Color,
     panel: Int,
+    lyricsContent: @Composable (PaddingValues) -> Unit,
+    lyricsFullscreen: Boolean,
+    onCollapseLyrics: () -> Unit,
+    lyricsMotionMs: Int,
     pauseScale: State<Float>,
     volume: PlayerVolume,
     coverSwipe: CoverSwipeController,
@@ -1305,18 +1364,41 @@ private fun LandscapePlayer(
     onSourceLong: () -> Unit = {},
     sidePane: Boolean = false,
 ) {
+    val expansion = animateFloatAsState(
+        if (lyricsFullscreen) 1f else 0f,
+        tween(lyricsMotionMs, easing = FastOutSlowInEasing), label = "landscapeLyricsExpansion",
+    )
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         PlayerDismissStrip(tint) { actions.close() }
-        Row(
+        AnimatedVisibility(
+            visible = lyricsFullscreen,
+            enter = fadeIn(tween(lyricsMotionMs)) + expandVertically(tween(lyricsMotionMs, easing = FastOutSlowInEasing)),
+            exit = fadeOut(tween(lyricsMotionMs / 2)) + shrinkVertically(tween(lyricsMotionMs, easing = FastOutSlowInEasing)),
+        ) {
+            FullscreenLyricsHeader(state, onCollapseLyrics)
+        }
+        BoxWithConstraints(
             Modifier.weight(1f).fillMaxWidth().padding(start = PLAYER_GUTTER, end = PLAYER_GUTTER, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(PLAYER_GUTTER),
+        ) {
+        val progress = expansion.value
+        val panes = if (sidePane && panel != Panel.NONE) 3.1f else 2f
+        val normalPane = (maxWidth - PLAYER_GUTTER * if (panes > 2f) 2 else 1) / panes
+        val fullWidth = maxWidth
+        Row(
+            Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(PLAYER_GUTTER * (1f - progress)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            if (!sidePane || progress < 1f) BoxWithConstraints(
+                Modifier.width(lerp(normalPane, if (sidePane) 0.dp else fullWidth, progress))
+                    .fillMaxHeight().clipToBounds()
+                    .graphicsLayer { if (sidePane) alpha = (1f - progress * 2f).coerceAtLeast(0f) },
+                contentAlignment = Alignment.Center,
+            ) {
                 val side = minOf(maxWidth, maxHeight)
                 Crossfade(targetState = if (sidePane) Panel.NONE else panel, animationSpec = tween(250), modifier = Modifier.fillMaxSize(), label = "playerLandscapePanel") { shown ->
                     when (shown) {
-                        Panel.LYRICS -> ImmersiveLyricsPanel(Modifier.fillMaxSize(), PaddingValues(vertical = 4.dp))
+                        Panel.LYRICS -> lyricsContent(PaddingValues(vertical = 4.dp))
                         Panel.QUEUE -> ImmersiveQueuePanel(Modifier.fillMaxSize(), PaddingValues(vertical = 4.dp))
                         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Box(
@@ -1403,7 +1485,11 @@ private fun LandscapePlayer(
                     }
                 }
             }
-            BoxWithConstraints(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+            if (progress < 1f) BoxWithConstraints(
+                Modifier.width(normalPane * (1f - progress)).fillMaxHeight().clipToBounds()
+                    .graphicsLayer { alpha = (1f - progress * 2f).coerceAtLeast(0f) },
+                contentAlignment = Alignment.Center,
+            ) {
                 val showVolume = com.music.spotui.data.preferences.PlayerVolumePref.on && maxHeight >= LANDSCAPE_VOLUME_MIN_HEIGHT
                 Column(Modifier.widthIn(max = PLAYER_MAX_WIDTH).verticalScroll(rememberScrollState())) {
                     CurrentLyricStrip(
@@ -1424,15 +1510,16 @@ private fun LandscapePlayer(
                     )
                 }
             }
-            if (sidePane && panel != Panel.NONE) Box(Modifier.weight(1.1f).fillMaxHeight()) {
+            if (sidePane && panel != Panel.NONE) Box(Modifier.width(lerp(normalPane * 1.1f, fullWidth, progress)).fillMaxHeight()) {
                 Crossfade(targetState = panel, animationSpec = tween(250), modifier = Modifier.fillMaxSize(), label = "playerSidePane") { shown ->
                     when (shown) {
-                        Panel.LYRICS -> ImmersiveLyricsPanel(Modifier.fillMaxSize(), PaddingValues(vertical = 4.dp))
+                        Panel.LYRICS -> lyricsContent(PaddingValues(vertical = 4.dp))
                         Panel.QUEUE -> ImmersiveQueuePanel(Modifier.fillMaxSize(), PaddingValues(vertical = 4.dp))
                         else -> Box(Modifier.fillMaxSize())
                     }
                 }
             }
+        }
         }
     }
 }

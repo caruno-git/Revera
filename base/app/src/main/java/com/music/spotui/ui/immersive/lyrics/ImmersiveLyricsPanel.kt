@@ -129,6 +129,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material3.Icon
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
@@ -155,7 +156,11 @@ import com.music.spotui.ui.components.shareLyricLines
  * list keeps clear of whatever the player draws over it.
  */
 @Composable
-fun ImmersiveLyricsPanel(modifier: Modifier = Modifier, contentPadding: PaddingValues = PaddingValues()) {
+fun ImmersiveLyricsPanel(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
+    onExpand: (() -> Unit)? = null,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val vm: LyricsViewModel = viewModel()
     val song = Graph.currentSongState
@@ -211,7 +216,7 @@ fun ImmersiveLyricsPanel(modifier: Modifier = Modifier, contentPadding: PaddingV
                     val canRomanize = current.lyrics.hasRomanization
                     val canTranslate = !LyricsViewModel.sameLanguage(current.sourceLanguage, target)
                     val showTranslateButton = com.music.spotui.data.preferences.LyricsTranslateButtonPref.on && (canTranslate || current.showTranslation)
-                    val controlsVisible = !selecting && (canRomanize || showTranslateButton)
+                    val controlsVisible = !selecting && (onExpand != null || canRomanize || showTranslateButton)
                     // Other lyrics for the same song (the line-timed ones shown first, then the
                     // word-timed ones): each has its own list, opened on the line being sung, and the
                     // new one fades in over the old. Reported: the lines jumped when the words came,
@@ -230,7 +235,7 @@ fun ImmersiveLyricsPanel(modifier: Modifier = Modifier, contentPadding: PaddingV
                             romanizing = LyricsRomanizationPref.on && shown.hasRomanization,
                         )
                     }
-                    // The romanization, when the lyrics have one, then the Classic screen's translation,
+                    // Expand the panel, then romanization when present and the Classic screen's translation,
                     // with its language setting and its service: the lyrics are only sent when it is
                     // tapped. Not offered for a song already in that language.
                     if (controlsVisible) {
@@ -244,6 +249,12 @@ fun ImmersiveLyricsPanel(modifier: Modifier = Modifier, contentPadding: PaddingV
                                     end = Immersive.Gutter + contentPadding.calculateEndPadding(layoutDirection),
                                 ),
                         ) {
+                            if (onExpand != null) LyricsToggle(
+                                icon = Icons.Rounded.OpenInFull,
+                                description = stringResource(R.string.lyrics_fullscreen),
+                                on = false,
+                                onClick = onExpand,
+                            )
                             if (canRomanize) LyricsToggle(
                                 icon = Icons.Rounded.Abc,
                                 description = stringResource(R.string.lyrics_romanize),

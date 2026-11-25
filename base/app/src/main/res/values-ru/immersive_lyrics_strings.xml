@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="immersive_lyrics_collapse">Свернуть полноэкранный текст</string>
     <string name="immersive_lyrics_instrumental">Инструментал</string>
     <string name="immersive_lyrics_none">Для этого трека нет текста</string>
     <string name="immersive_queue_title">Очередь</string>
