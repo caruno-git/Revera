@@ -9,7 +9,7 @@ Download this fork from [our releases](https://revera.caruno.wtf/carunodev/Rever
 
 [![Download latest](https://img.shields.io/badge/Revera-download_latest-blue)](https://revera.caruno.wtf/carunodev/Revera/releases/latest)
 [![License: GPL-3.0](https://img.shields.io/github/license/caruno-git/Revera)](LICENSE)
-[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/S5gdMChKfY)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/BkXrRARCMf)
 
 **A music player for Android, Android TV and Wear OS, with your Spotify account.** Your own Spotify account, playlists and Wrapped, in a native Android app, with sound and offline downloads through extensions you install.
 
