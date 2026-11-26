@@ -83,7 +83,8 @@ class ShowViewModel constructor(
                 // A failed page may be loaded again (Try again, or opening it anew).
                 if (response is Response.Error) showKey = null
                 val loaded = (response as? Response.Success)?.data ?: return@collect
-                following.value = loaded.show.saved || SongPlayer.library["spotify:show:$showId"] == true
+                val uri = if (loaded.audiobook) "spotify:audiobook:${loaded.show.id}" else "spotify:show:${loaded.show.id}"
+                following.value = loaded.show.saved || SongPlayer.library[uri] == true
                 if (!loaded.audiobook && loaded.items.isNotEmpty()) {
                     PodcastPrefs.markOpened(showId, loaded.items.maxOf { it.releaseDate }, following.value)
                 }
@@ -96,7 +97,7 @@ class ShowViewModel constructor(
             if (marked.isEmpty()) return@launch
             marked.forEach { uri ->
                 val id = uri.substringAfterLast(':')
-                finished["episode:$id"] = true
+                finished[if (uri.startsWith("spotify:chapter:")) "chapter:$id" else "episode:$id"] = true
             }
         }
     }
@@ -108,7 +109,7 @@ class ShowViewModel constructor(
     fun setFinished(episode: SongsModel, played: Boolean) {
         finished[episode.url] = played
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { api.setEpisodePlayed("spotify:episode:${episode.url.removePrefix("episode:")}", played) }
+            runCatching { api.setEpisodePlayed("spotify:${episode.url}", played) }
                 .onFailure {
                     // Spotify refused: back to what the row said, the row is the truth.
                     kotlinx.coroutines.withContext(Dispatchers.Main) { finished.remove(episode.url) }
@@ -119,6 +120,9 @@ class ShowViewModel constructor(
     fun setFollow(showId: String, on: Boolean) {
         following.value = on
         PodcastPrefs.setFollowed(showId, on)
-        SongPlayer.setSaved("spotify:show:$showId", on)
+        val uri = if (showId.startsWith("spotify:")) showId
+            else if ((_page.value as? Response.Success)?.data?.audiobook == true) "spotify:audiobook:$showId"
+            else "spotify:show:$showId"
+        SongPlayer.setSaved(uri, on)
     }
 }

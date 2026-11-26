@@ -125,8 +125,7 @@ fun ImmersivePodcastPlayer(navController: NavController) {
     val title = state.title
     val showName = state.artist.ifBlank { np.contextName }
     val cover = Graph.currentSongState.coverUri.value
-    val episodeId = np.uri.removePrefix("spotify:episode:")
-    val uri = "spotify:episode:$episodeId"
+    val uri = np.uri
     val saved = SongPlayer.library[uri] == true
     LaunchedEffect(uri) { SongPlayer.requestSaved(uri) }
 
@@ -188,7 +187,7 @@ fun ImmersivePodcastPlayer(navController: NavController) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        navController.navigate(episodeRoute(episodeId, title))
+                        navController.navigate(episodeRoute(uri, title))
                     }
                     .titleMarquee(iterations = Int.MAX_VALUE),
             )
@@ -386,7 +385,7 @@ fun ImmersivePodcastPlayer(navController: NavController) {
             album = showName,
             singer = showName,
             coverUri = cover,
-            url = "episode:$episodeId",
+            url = uri.removePrefix("spotify:"),
             durationMs = state.durationMs.toInt(),
         )
         EpisodeOptionsSheet(
@@ -398,7 +397,7 @@ fun ImmersivePodcastPlayer(navController: NavController) {
                     withContext(Dispatchers.IO) { runCatching { Graph.api.setEpisodePlayed(uri, played) } }
                 }
             },
-            onOpen = { navController.navigate(episodeRoute(episodeId, title)) },
+            onOpen = { navController.navigate(episodeRoute(uri, title)) },
             onDismiss = { showMenu = false },
         )
     }

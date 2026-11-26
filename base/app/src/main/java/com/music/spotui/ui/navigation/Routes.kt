@@ -77,7 +77,11 @@ fun showRoute(id: String, name: String = ""): String =
 
 /** A podcast episode (or a book chapter), by raw Spotify id. */
 fun episodeRoute(id: String, name: String = ""): String =
-    "${Routes.Episode.route}/${android.net.Uri.encode(id)}?name=${android.net.Uri.encode(name)}"
+    "${Routes.Episode.route}/${android.net.Uri.encode(when {
+        id.startsWith("spotify:") -> id
+        id.startsWith("episode:") || id.startsWith("chapter:") -> "spotify:$id"
+        else -> "spotify:episode:$id"
+    })}?name=${android.net.Uri.encode(name)}"
 
 /**
  * Builds an artist route. When the exact Spotify artist id is known it is

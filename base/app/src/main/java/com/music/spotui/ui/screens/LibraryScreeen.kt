@@ -661,7 +661,7 @@ private fun openLibraryEntry(entry: LibraryEntry, navController: NavController) 
     if (LibraryEdits.isPending(entry.spotifyId)) return
     if (entry.isFolder) navController.navigate(folderRoute(entry.folderUri, entry.name))
     else if (entry.spotifyId.startsWith(LOCAL_PLAYLIST_PREFIX)) navController.navigate(localPlaylistRoute(entry.spotifyId.removePrefix(LOCAL_PLAYLIST_PREFIX)))
-    else if (entry.spotifyId.startsWith(Api.HomeCache.SHOW_PREFIX)) navController.navigate(showRoute(entry.spotifyId.removePrefix(Api.HomeCache.SHOW_PREFIX), entry.name))
+    else if (entry.spotifyId.startsWith(Api.HomeCache.SHOW_PREFIX)) navController.navigate(showRoute(entry.uri.takeIf { it.startsWith("spotify:audiobook:") || it.startsWith("spotify:show:") } ?: entry.spotifyId.removePrefix(Api.HomeCache.SHOW_PREFIX), entry.name))
     else if (entry.spotifyId == Api.HomeCache.DOWNLOADS_ID) navController.navigate(Routes.Downloads.route)
     else if (entry.spotifyId == Api.HomeCache.LOCAL_FILES_ID) navController.navigate(Routes.LocalFiles.route)
     else if (entry.spotifyId == com.music.spotui.radio.RadioFeaturePref.LIBRARY_ENTRY_ID) navController.navigate(Routes.LiveRadio.route)

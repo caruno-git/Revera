@@ -400,6 +400,17 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
             if (isLiked) p.tracks.filter { SongPlayer.library["spotify:track:${it.spotifyTrackId}"] != false } else p.tracks
         }
     }
+    var selectedGenre by remember(p.uri) { mutableStateOf<com.music.spotui.data.api.LikedGenre?>(null) }
+    var playedGenre by remember(p.uri) { mutableStateOf<com.music.spotui.data.api.LikedGenre?>(null) }
+    val genreState = com.music.spotui.ui.components.rememberLikedGenres(if (p.type == "liked" && p.complete) all else emptyList())
+    val playTracks = remember(all, selectedGenre, genreState.byArtist) {
+        if (p.type == "liked") com.music.spotui.data.api.LikedGenres.filter(all, selectedGenre, genreState.byArtist) else all
+    }
+    val playPage = if (selectedGenre != null) p.copy(tracks = playTracks, complete = true) else p
+    fun playGenreSong(song: SongsModel) {
+        vm.play(playPage, song, sort, forceOrder = selectedGenre != null)
+        playedGenre = selectedGenre
+    }
     // An own playlist in its own order: its songs can be moved by hand, a handle on each while
     // "Move" is on, as on the Classic page.
     var moving by remember(p.uri) { mutableStateOf(false) }
@@ -411,9 +422,9 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
     // (a search letter, the "×" of the search), and keys remembered apart from them were one list
     // behind (a list that grows on the "×" ran out of keys: a crash). Rows that move are keyed by
     // their own id, which goes with them wherever they are put.
-    val shown by remember(p, find, sort, reordering) {
+    val shown by remember(p, find, sort, reordering, playTracks) {
         derivedStateOf {
-            val found = if (findable) all.filter { matchesFind(find, it.title, it.singer, it.album) } else all
+            val found = if (findable) playTracks.filter { matchesFind(find, it.title, it.singer, it.album) } else playTracks
             withRowKeys(if (findable) sort.apply(found) else found) { if (reordering) PlaylistReorder.key(it) else it.id.toString() }
         }
     }
@@ -421,13 +432,15 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
 
     // What the Play pill does: pause / resume this list, else start it (smart shuffle if it is on).
     fun onPlay() = when {
+        selectedGenre != null && playedGenre != selectedGenre && playTracks.isNotEmpty() -> playGenreSong(if (shuffle) playTracks.random() else sort.apply(playTracks).first())
         isThisContext && playing -> SongPlayer.pause()
         isThisContext -> SongPlayer.play()
-        p.tracks.isNotEmpty() && SmartShuffle.on.value == p.uri -> vm.playSmart(p, null)
-        p.tracks.isNotEmpty() -> vm.play(p, if (shuffle) p.tracks.random() else sort.apply(p.tracks).first(), sort)
+        playTracks.isNotEmpty() && SmartShuffle.on.value == p.uri -> vm.playSmart(p, null)
+        playTracks.isNotEmpty() -> playGenreSong(if (shuffle) playTracks.random() else sort.apply(playTracks).first())
         else -> Unit
     }
     fun toggleSmart() {
+        if (selectedGenre != null) return
         if (smart) {
             SmartShuffle.on.value = null
             playerVm.updateShuffleState(false)
@@ -437,18 +450,18 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
             if (isThisContext) vm.playSmart(p, p.tracks.firstOrNull { it.id == currentSongId })
         }
     }
-    // Start another list shuffled from a random song. For the list already playing, keep the
+    // Start another list shuffled from a random song. For the selection already playing, keep the
     // current song and only toggle shuffle; smart shuffle has its own button under the pill.
     fun onShuffle() {
-        if (p.tracks.isEmpty()) return
-        if (isThisContext) {
+        if (playTracks.isEmpty()) return
+        if (isThisContext && playedGenre == selectedGenre) {
             if (smart) SmartShuffle.on.value = null
             playerVm.updateShuffleState(if (smart) true else !shuffle)
             return
         }
         if (smart) return vm.playSmart(p, null)
         playerVm.updateShuffleState(true)
-        vm.play(p, p.tracks.random(), sort)
+        playGenreSong(playTracks.random())
     }
 
     val listState = rememberLazyListState()
@@ -497,6 +510,7 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
                     saved = SongPlayer.library[p.uri] ?: contextSaved,
                     smart = smart,
                     shuffled = isThisContext && (shuffle || smart),
+                    genreFiltered = selectedGenre != null,
                     onPlay = ::onPlay,
                     onShuffle = ::onShuffle,
                     onToggleSaved = { vm.toggleContextSaved(p) },
@@ -514,6 +528,21 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
                     moving = moving.takeIf { canMove },
                     onMove = { moving = !moving },
                 )
+            }
+            if (p.type == "liked" && p.complete && all.isNotEmpty()) item(key = "liked-genres") {
+                com.music.spotui.ui.components.LikedGenreChips(all, genreState, selectedGenre, { genre ->
+                    if (genre != selectedGenre) {
+                        val next = com.music.spotui.data.api.LikedGenres.filter(all, genre, genreState.byArtist)
+                        selectedGenre = genre
+                        if (genre != null) SmartShuffle.on.value = null
+                        if (isThisContext && playing && next.isNotEmpty()) {
+                            vm.play(if (genre == null) p else p.copy(tracks = next, complete = true),
+                                next.firstOrNull { it.id == currentSongId } ?: if (shuffle) next.random() else sort.apply(next).first(),
+                                sort, forceOrder = genre != null)
+                            playedGenre = genre
+                        }
+                    }
+                }, Modifier.padding(vertical = 4.dp))
             }
             // Someone else's collaborative playlist this account was never invited to.
             if (vm.collabLocked.value && !vm.editableContext.value) item(key = "collab-locked") {
@@ -542,8 +571,9 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
                     modifier = Modifier.padding(horizontal = Immersive.Gutter, vertical = 8.dp),
                 )
             }
-            if (rows.isEmpty() && find.isNotBlank()) item(key = "find-empty") {
-                ImmersiveMessageState(stringResource(R.string.assisted_curation_search_empty_view_no_result_title, find.trim()))
+            if (rows.isEmpty() && (find.isNotBlank() || selectedGenre != null)) item(key = "find-empty") {
+                ImmersiveMessageState(if (find.isNotBlank()) stringResource(R.string.assisted_curation_search_empty_view_no_result_title, find.trim())
+                    else stringResource(R.string.liked_genre_empty))
             }
             if (reordering) item(key = "reorder-hint") {
                 Text(
@@ -564,7 +594,7 @@ private fun ImmersiveContextContent(navController: NavController, vm: ContextVie
                             current = song.id == currentSongId,
                             onClick = {
                                 dismissKeyboard()
-                                tapper.tap(song) { if (SmartShuffle.on.value == p.uri) vm.playSmart(p, song) else vm.play(p, song, sort) }
+                                tapper.tap(song) { if (selectedGenre == null && SmartShuffle.on.value == p.uri) vm.playSmart(p, song) else playGenreSong(song) }
                             },
                             onMore = { menuSong = song },
                             trackNumber = if (numbered) index + 1 else null,
@@ -705,6 +735,7 @@ private fun ContextHeader(
     saved: Boolean,
     smart: Boolean,
     shuffled: Boolean,
+    genreFiltered: Boolean,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onToggleSaved: () -> Unit,
@@ -874,7 +905,7 @@ private fun ContextHeader(
                             Toast.makeText(context, context.getString(R.string.download_notification_downloading), Toast.LENGTH_SHORT).show()
                         }
                     }
-                    if (SmartShuffle.canPlay(p.uri)) ImmersiveCircleButton(
+                    if (!genreFiltered && SmartShuffle.canPlay(p.uri)) ImmersiveCircleButton(
                         icon = Icons.Rounded.AutoAwesome,
                         contentDescription = stringResource(R.string.smart_shuffle_title),
                         onClick = onToggleSmart,

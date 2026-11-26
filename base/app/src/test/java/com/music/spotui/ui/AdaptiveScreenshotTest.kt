@@ -634,11 +634,12 @@ abstract class AdaptiveScreenshotTest(private val size: String) {
         val d = rule.activity.resources.displayMetrics.density
         val handles = rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Move in queue"), useUnmergedTree = true)
             .fetchSemanticsNodes().map { it.boundsInRoot }.filter { it.top > 110 * d }.sortedBy { it.top }
-        // The third row seen: the finger then goes over two rows and out of the list.
-        val from = handles[2].center
         val title = rule.onAllNodes(androidx.compose.ui.test.hasText("Song 11"), useUnmergedTree = true)
             .fetchSemanticsNodes().first().boundsInRoot
-        org.junit.Assert.assertTrue("Song 11 is the third row seen", kotlin.math.abs(title.center.y - from.y) < 24 * d)
+        // Pick this row's handle from the visible handles. Its ordinal changes with row/header
+        // measurements, while its vertical alignment with the title does not.
+        val from = handles.minBy { kotlin.math.abs(it.center.y - title.center.y) }.center
+        org.junit.Assert.assertTrue("Song 11 has a visible drag handle", kotlin.math.abs(title.center.y - from.y) < 24 * d)
         rule.onRoot().performTouchInput { down(from) }
         rule.mainClock.advanceTimeByFrame()
         // Up past the top of the list (110 dp from the window's top), into the header, by small moves.

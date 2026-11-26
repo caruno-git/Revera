@@ -114,7 +114,7 @@ fun ImmersiveShowScreen(navController: NavController, showId: String, showName: 
                 if (index >= 0) playAt(index)
             },
             onMarkFinished = { vm.setFinished(sel, it) },
-            onOpen = { navController.navigate(episodeRoute(sel.url.removePrefix("episode:"), sel.title)) },
+            onOpen = { navController.navigate(episodeRoute(sel.url, sel.title)) },
             onDismiss = { menuSong = null },
         )
     }
@@ -203,14 +203,14 @@ fun ImmersiveShowScreen(navController: NavController, showId: String, showName: 
                 if (tab == 0) items(rows, key = { it.url }) { ep ->
                     ImmersiveEpisodeRow(
                         episode = ep,
-                        playing = np.uri == "spotify:episode:${ep.url.removePrefix("episode:")}" && SongPlayer.isPlaying(),
+                        playing = np.uri == "spotify:${ep.url}" && SongPlayer.isPlaying(),
                         finished = vm.isFinished(ep),
                         isNew = vm.isNew(ep),
                         onPlay = {
                             val index = items.indexOfFirst { it.url == ep.url }
                             if (index >= 0) playAt(index)
                         },
-                        onOpen = { navController.navigate(episodeRoute(ep.url.removePrefix("episode:"), ep.title)) },
+                        onOpen = { navController.navigate(episodeRoute(ep.url, ep.title)) },
                         onMenu = { menuSong = ep },
                         modifier = rowPlacement(),
                     )

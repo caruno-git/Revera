@@ -46,4 +46,5 @@ data class SongsModel(
 
     /** A podcast episode (url = "episode:<raw id>"), not a music track. */
     val isEpisode : Boolean get() = url.startsWith("episode:")
+    val isChapter : Boolean get() = url.startsWith("chapter:")
 }

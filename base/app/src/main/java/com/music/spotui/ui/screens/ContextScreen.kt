@@ -512,7 +512,7 @@ class ContextViewModel(
     /** The order the list was last played in from this page, for the songs that load after the pick. */
     private var playedSort = TrackOrder()
 
-    fun play(p: ContextPageModel, song: SongsModel, sort: TrackOrder = TrackOrder()) {
+    fun play(p: ContextPageModel, song: SongsModel, sort: TrackOrder = TrackOrder(), forceOrder: Boolean = false) {
         playedSort = sort
         // Local files of the playlist (Spotify holds their tags only): one found on this device
         // plays from there, with the other such files of the list; one not found cannot play,
@@ -521,7 +521,7 @@ class ContextViewModel(
         val store = com.music.spotui.data.offline.OfflineStore
         val limited = com.music.spotui.data.DataSaver.active || !store.isOnline(app)
         if (!limited && SongPlayer.activeDevice.value != null && !com.music.spotui.data.local.LocalFileMatch.run { song.isDeviceFile || song.isUnmatchedLocal }) {
-            playOnSpotify(p, song, sort)
+            playOnSpotify(p, song, sort, forceOrder)
             return
         }
         with(com.music.spotui.data.local.LocalFileMatch) {
@@ -529,7 +529,7 @@ class ContextViewModel(
             if (song.isUnmatchedLocal) {
                 val after = sorted.drop(sorted.indexOfFirst { it.id == song.id && it.rowUid == song.rowUid } + 1)
                 val next = (after + sorted).firstOrNull { !it.isUnmatchedLocal } ?: return
-                return play(p, next, sort)
+                return play(p, next, sort, forceOrder)
             }
             if (!limited && !com.music.spotui.extensions.Extensions.hasAudioSource() && com.music.spotui.di.MixedPlaylistQueue.isMixed(sorted)) {
                 com.music.spotui.di.MixedPlaylistQueue.start(sorted, song, state.shuffle.value, p.name, p.uri)
@@ -565,7 +565,7 @@ class ContextViewModel(
         if (!limited && com.music.spotui.extensions.Extensions.hasAudioSource()) {
             val shuffle = state.shuffle.value
             val ordered = sort.apply(p.tracks)
-            SongPlayer.playThroughExtensions(song.spotifyTrackId, song, p.name, { playOnSpotify(p, song, sort) }, songs = ordered, contextUri = p.uri) { isLatest, _ ->
+            SongPlayer.playThroughExtensions(song.spotifyTrackId, song, p.name, { playOnSpotify(p, song, sort, forceOrder) }, songs = ordered, contextUri = p.uri) { isLatest, _ ->
                 com.music.spotui.extensions.ExtensionAudio.playList(ordered, song, p.name, shuffle, p.uri, isLatest).also { played ->
                     // The list finished loading while the extension was asked for the picked song.
                     val whole = (_page.value as? Response.Success)?.data?.takeIf { it.uri == p.uri && it.complete && !p.complete }
@@ -574,10 +574,10 @@ class ContextViewModel(
             }
             return
         }
-        playOnSpotify(p, song, sort)
+        playOnSpotify(p, song, sort, forceOrder)
     }
 
-    private fun playOnSpotify(p: ContextPageModel, song: SongsModel, sort: TrackOrder) {
+    private fun playOnSpotify(p: ContextPageModel, song: SongsModel, sort: TrackOrder, forceOrder: Boolean) {
         state.updateQueue(p.tracks)
         // B26: keep the list's own name — the player header falls back to it when Spotify's
         // context label comes back blank (it then showed the album's name).
@@ -585,7 +585,8 @@ class ContextViewModel(
         if (p.type == "liked" || p.type == "liked-artist") SongPlayer.registerLikedSongs(p.tracks.map { it.url })
         // Sorted by the user: Spotify plays the list in that order, not the playlist's. An
         // artist's liked songs are a part of Liked Songs: always given, so only they play.
-        val order = if (sort.isCustom && p.type != "liked-artist") null else sort.apply(p.tracks).filter { it.spotifyTrackId.isNotBlank() }.map { "spotify:track:${it.spotifyTrackId}" }
+        val order = if (sort.isCustom && p.type != "liked-artist" && !forceOrder) null
+            else sort.apply(p.tracks).filter { it.spotifyTrackId.isNotBlank() }.map { "spotify:track:${it.spotifyTrackId}" }
         // Myspoti's shuffle (an option): with shuffle on, every song of the list once, in an order of its own.
         if (com.music.spotui.di.AppShuffle.play(p, song, order)) {
             state.updateSongState(song.coverUri, song.title, song.singer, true, song.id, 0, song.album)
@@ -768,6 +769,17 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
             if (p.type == "liked" || p.type == "liked-artist") p.tracks.filter { SongPlayer.library["spotify:track:${it.spotifyTrackId}"] != false } else p.tracks
         }
     }
+    var selectedGenre by remember(p.uri) { mutableStateOf<com.music.spotui.data.api.LikedGenre?>(null) }
+    var playedGenre by remember(p.uri) { mutableStateOf<com.music.spotui.data.api.LikedGenre?>(null) }
+    val genreState = com.music.spotui.ui.components.rememberLikedGenres(if (p.type == "liked" && p.complete) all else emptyList())
+    val playTracks = remember(all, selectedGenre, genreState.byArtist) {
+        if (p.type == "liked") com.music.spotui.data.api.LikedGenres.filter(all, selectedGenre, genreState.byArtist) else all
+    }
+    val playPage = if (selectedGenre != null) p.copy(tracks = playTracks, complete = true) else p
+    fun playGenreSong(song: SongsModel) {
+        vm.play(playPage, song, sort, forceOrder = selectedGenre != null)
+        playedGenre = selectedGenre
+    }
     // An own playlist in its own order: its songs can be moved by hand, a handle on each while
     // "Move" is on (asked on Discord).
     var moving by remember(p.uri) { mutableStateOf(false) }
@@ -780,9 +792,9 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
     // the rows in one derived state: the list re-reads its rows outside composition (a like, a
     // search letter), and keys remembered apart from them could be one list behind (a crash).
     // Rows that move are keyed by their own id, which goes with them wherever they are put.
-    val shown by remember(p, find, sort, reordering) {
+    val shown by remember(p, find, sort, reordering, playTracks) {
         derivedStateOf {
-            val found = if (findable) all.filter { com.music.spotui.ui.components.matchesFind(find, it.title, it.singer, it.album) } else all
+            val found = if (findable) playTracks.filter { com.music.spotui.ui.components.matchesFind(find, it.title, it.singer, it.album) } else playTracks
             com.music.spotui.ui.components.withRowKeys(if (findable) sort.apply(found) else found) { if (reordering) PlaylistReorder.key(it) else it.id.toString() }
         }
     }
@@ -1059,12 +1071,12 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
                                 ) {
                                     when {
                                         // The list does not play yet: it starts shuffled, from a random song.
-                                        !isThisContext && !smart && p.tracks.isNotEmpty() -> {
+                                        (!isThisContext || (selectedGenre != null && playedGenre != selectedGenre)) && !smart && playTracks.isNotEmpty() -> {
                                             playerVm.updateShuffleState(true)
-                                            vm.play(p, p.tracks.random(), sort)
+                                            playGenreSong(playTracks.random())
                                         }
                                         smart -> { SmartShuffle.on.value = null; playerVm.updateShuffleState(false) }
-                                        shuffle && (p.type == "playlist" || p.type == "liked") -> {
+                                        shuffle && selectedGenre == null && (p.type == "playlist" || p.type == "liked") -> {
                                             SmartShuffle.on.value = p.uri
                                             android.widget.Toast.makeText(context, context.getString(R.string.smart_shuffle_on), android.widget.Toast.LENGTH_SHORT).show()
                                             if (isThisContext) vm.playSmart(p, p.tracks.firstOrNull { it.id == currentSongId })
@@ -1093,10 +1105,11 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
                                 .size(56.dp)
                                 .pressable(pressedScale = 0.92f) {
                                     when {
+                                        selectedGenre != null && playedGenre != selectedGenre && playTracks.isNotEmpty() -> playGenreSong(if (shuffle) playTracks.random() else sort.apply(playTracks).first())
                                         isThisContext && playing -> SongPlayer.pause()
                                         isThisContext -> SongPlayer.play()
-                                        p.tracks.isNotEmpty() && SmartShuffle.on.value == p.uri -> vm.playSmart(p, null)
-                                        p.tracks.isNotEmpty() -> vm.play(p, if (shuffle) p.tracks.random() else sort.apply(p.tracks).first(), sort)
+                                        playTracks.isNotEmpty() && SmartShuffle.on.value == p.uri -> vm.playSmart(p, null)
+                                        playTracks.isNotEmpty() -> playGenreSong(if (shuffle) playTracks.random() else sort.apply(playTracks).first())
                                     }
                                 }
                                 .clip(CircleShape)
@@ -1141,6 +1154,21 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
         }
         // Liked Songs: a track unliked anywhere leaves the list right away.
         // A Blend: its taste-match card and its members, as on the official Blend page.
+        if (p.type == "liked" && p.complete && all.isNotEmpty()) item(key = "liked-genres") {
+            com.music.spotui.ui.components.LikedGenreChips(all, genreState, selectedGenre, { genre ->
+                if (genre != selectedGenre) {
+                    val next = com.music.spotui.data.api.LikedGenres.filter(all, genre, genreState.byArtist)
+                    selectedGenre = genre
+                    if (genre != null) SmartShuffle.on.value = null
+                    if (isThisContext && playing && next.isNotEmpty()) {
+                        vm.play(if (genre == null) p else p.copy(tracks = next, complete = true),
+                            next.firstOrNull { it.id == currentSongId } ?: if (shuffle) next.random() else sort.apply(next).first(),
+                            sort, forceOrder = genre != null)
+                        playedGenre = genre
+                    }
+                }
+            }, Modifier.padding(vertical = 4.dp))
+        }
         if (vm.collabLocked.value && !vm.editableContext.value) item(key = "collab-locked") {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1171,8 +1199,9 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
             }
             }
         }
-        if (shown.first.isEmpty() && find.isNotBlank()) item(key = "find-empty") {
-            com.music.spotui.ui.components.FindInListEmpty(stringResource(R.string.assisted_curation_search_empty_view_no_result_title, find.trim()))
+        if (shown.first.isEmpty() && (find.isNotBlank() || selectedGenre != null)) item(key = "find-empty") {
+            com.music.spotui.ui.components.FindInListEmpty(if (find.isNotBlank()) stringResource(R.string.assisted_curation_search_empty_view_no_result_title, find.trim())
+                else stringResource(R.string.liked_genre_empty))
         }
         if (reordering) item(key = "reorder-hint") {
             Text(stringResource(R.string.playlist_reorder_hint), color = AppMuted, fontSize = 13.sp,
@@ -1188,7 +1217,7 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
                 saved = com.music.spotui.di.trackSaved(song.spotifyTrackId, saved),
                 offline = com.music.spotui.data.offline.OfflineStore.statusOf(song.spotifyTrackId),
                 addedBy = vm.adders.value.let { a -> a["row:" + song.rowUid] ?: a["song:" + song.spotifyTrackId] },
-                onClick = { dismissKeyboard(); if (SmartShuffle.on.value == p.uri) vm.playSmart(p, song) else vm.play(p, song, sort) },
+                onClick = { dismissKeyboard(); if (selectedGenre == null && SmartShuffle.on.value == p.uri) vm.playSmart(p, song) else playGenreSong(song) },
                 onMore = { menuSong = song },
                 onSaved = { savedInSong = song },
                 handle = if (reordering) drag.handle(song.rowUid) else null,

@@ -45,7 +45,7 @@ android {
     // signed with the first key, as "Orpheon Beta"; releases are "app.orpheon",
     // signed with their own key, as "Orpheon". (Provisional ids: the rename from Myspoti.)
     // Local builds (no version given) are on the beta side, like the phone test builds.
-    val version = (findProperty("appVersionName") as String?) ?: "1.0.6"
+    val version = (findProperty("appVersionName") as String?) ?: "1.0.10"
     // "-beta" as in UpdateChecker.isBeta, one predicate for the app id, the label and the log stripping.
     val beta = findProperty("appVersionName") == null || version.contains("-beta")
     defaultConfig {
@@ -56,7 +56,7 @@ android {
         minSdk = 29
         targetSdk = 36
         // CI release builds pass the tag's version (-PappVersionName / -PappVersionCode).
-        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 209
+        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 100010
         versionName = version
         buildConfigField("String", "UPDATE_BASE_URL", "\"${if (automixLab) "" else "https://dl.caruno.wtf:8443"}\"")
         buildConfigField("String", "PROJECT_URL", "\"$projectUrl\"")
@@ -266,7 +266,7 @@ dependencies {
  */
 tasks.register("collectApks") {
     mustRunAfter("assembleRelease")
-    val version = (findProperty("appVersionName") as String?) ?: "1.0.6"
+    val version = (findProperty("appVersionName") as String?) ?: "1.0.10"
     val beta = version.contains("-beta")
     val app = when { findProperty("overDev") != null -> "$APK_NAME-dev"; beta -> "$APK_NAME-Beta"; else -> APK_NAME }
     // Copies: the configuration cache cannot keep a reference to the script's own values.

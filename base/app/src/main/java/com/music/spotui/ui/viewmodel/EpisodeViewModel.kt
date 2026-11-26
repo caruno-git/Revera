@@ -35,6 +35,7 @@ class EpisodeViewModel constructor(
     fun load(episodeId: String) {
         if (key == episodeId) return
         key = episodeId
+        val uri = if (episodeId.startsWith("spotify:")) episodeId else "spotify:episode:$episodeId"
         viewModelScope.launch(Dispatchers.IO) {
             val loaded = runCatching { repository.provideEpisode(episodeId) }.getOrNull()
             kotlinx.coroutines.withContext(Dispatchers.Main) {
@@ -43,13 +44,12 @@ class EpisodeViewModel constructor(
                 if (loaded != null) {
                     _episode.value = loaded
                     finished.value = loaded.played
-                    SongPlayer.requestSaved("spotify:episode:$episodeId")
+                    SongPlayer.requestSaved(uri)
                 }
             }
         }
         // The page's own "markedasfinished" set wins over the playedState when it holds the id.
         viewModelScope.launch(Dispatchers.IO) {
-            val uri = "spotify:episode:$episodeId"
             if (runCatching { api.finishedEpisodes() }.getOrDefault(emptySet()).contains(uri)) {
                 kotlinx.coroutines.withContext(Dispatchers.Main) { finished.value = true }
             }
@@ -61,7 +61,7 @@ class EpisodeViewModel constructor(
         finished.value = played
         _episode.value = episode.copy(played = played)
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching { api.setEpisodePlayed("spotify:episode:${episode.url.removePrefix("episode:")}", played) }
+            runCatching { api.setEpisodePlayed("spotify:${episode.url}", played) }
                 .onFailure { kotlinx.coroutines.withContext(Dispatchers.Main) { finished.value = episode.played } }
         }
     }

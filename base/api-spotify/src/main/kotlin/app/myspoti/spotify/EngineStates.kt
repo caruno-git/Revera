@@ -19,7 +19,7 @@ import app.myspoti.engine.NativeEngine
  * engine plays the account's songs, the listen mirror on the engine).
  */
 object EngineStates {
-    private fun kindOf(uri: String) = if (uri.startsWith("spotify:episode:")) ItemKind.EPISODE else ItemKind.TRACK
+    private fun kindOf(uri: String) = if (uri.startsWith("spotify:episode:") || uri.startsWith("spotify:chapter:")) ItemKind.EPISODE else ItemKind.TRACK
 
     /** The engine's own song and where it is. Shuffle, repeat and restrictions are not the engine's to say: off and none. */
     fun of(n: NativeEngine.Now): PlayerState = PlayerState(

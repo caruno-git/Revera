@@ -272,7 +272,7 @@ A new engine, written from scratch, and a cleaner app on top of it.
 - **Restart the player** in the profile menu, for when the music stops responding.
 - **Battery saver**: Myspoti's own saver is independent of Android's (which already lowers the screen rate) and only follows its switch. The AMOLED theme is its own choice too, and returning to the app no longer looks up a music video for nothing.
 - **Crossfade**: no background work when it is off, and the setting is kept when the player reloads.
-- **About** in the profile menu: the version, the [Discord server](https://discord.gg/jXKnGVFnGS) and the source code.
+- **About** in the profile menu: the version, the [Discord server](https://discord.gg/TtxSAvhUc) and the source code.
 - **Support Myspoti**: Myspoti is free and has no ads; you can now support it on Ko-fi from the profile menu or About. A short reminder appears a day after installing this version, then every 2 weeks; "No thanks" closes it, and nothing is locked behind a donation.
 - New versions are checked every 3 hours instead of once a day.
 - Your Library still opens Local Files and Downloaded without a connection, and the notification shows the cover of local and downloaded songs.

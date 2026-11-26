@@ -7,9 +7,14 @@ Each release on GitHub shows its section below. The app shows it too when it off
 - **Spotify code sign-in**: send and confirm email-code requests through a dedicated transport while retaining the embedded sign-in page and its session cookies.
 - **Verification note**: code delivery was verified; full sign-in and session retention remain pending confirmation.
 
-## Unreleased
+## 1.0.10
 
 - **Spotify playback**: Pause now controls the Web Player when it is playing instead of sending the command to an idle native engine.
+- **Search playback**: tracks opened from search keep accurate playback state when Spotify metadata is disabled.
+- **Podcasts and audiobooks**: chapters, show navigation, progress and playback context now work consistently across Classic, Immersive and TV layouts.
+- **Liked Songs genres**: genre filters can be used while browsing and playing Liked Songs.
+- **Immersive lyrics**: fullscreen lyrics animate into and out of the player.
+- **Community**: updated every Revera Discord link to the current invite.
 - **Playback**: Music no longer pauses by itself when a mirrored Spotify song starts unheard in the Web Player and Android sends a pause to our media session.
 
 ## 1.0.8
@@ -417,7 +422,7 @@ This release installs as **Myspoti**, next to Myspoti Beta if you have it.
 - **Restart the player** in the profile menu, for when the music stops responding.
 - **Battery saver**: Myspoti's own saver is independent of Android's (which already lowers the screen rate) and only follows its switch. The AMOLED theme is its own choice too, and returning to the app no longer looks up a music video for nothing.
 - **Crossfade**: no background work when it is off, and the setting is kept when the player reloads.
-- **About** in the profile menu: the version, the [Discord server](https://discord.gg/jXKnGVFnGS) and the source code.
+- **About** in the profile menu: the version, the [Discord server](https://discord.gg/TtxSAvhUc) and the source code.
 - **Support Myspoti**: Myspoti is free and has no ads; you can now support it on Ko-fi from the profile menu or About. A short reminder appears a day after installing this version, then every 2 weeks; "No thanks" closes it, and nothing is locked behind a donation.
 - New versions are checked every 3 hours instead of once a day.
 - Your Library still opens Local Files and Downloaded without a connection, and the notification shows the cover of local and downloaded songs.

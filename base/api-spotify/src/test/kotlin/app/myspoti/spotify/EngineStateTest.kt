@@ -113,6 +113,16 @@ class EngineStateTest {
         assertEquals("spotify:track:N", s.next?.uri)
     }
 
+    @Test fun `a chapter from the page replaces the native engine's previous track`() = time.test {
+        host.post("""{"type":"ready"}""")
+        engine.now.value = now("A", playing = true, positionMs = 42_000)
+        val chapter = """{"kind":"chapter","uri":"spotify:chapter:C","name":"Chapter C","durationMs":300000}"""
+        host.post(pageState(chapter, paused = false, positionMs = 5_000))
+        waitFor("chapter state") { player.state.value?.item?.uri == "spotify:chapter:C" }
+        assertEquals(app.myspoti.api.ItemKind.EPISODE, player.state.value?.item?.kind)
+        assertEquals(5_000, player.state.value?.positionMs)
+    }
+
     @Test fun `the engine moved on to the page's next song, shown before the page says so`() = time.test {
         host.post("""{"type":"ready"}""")
         engine.now.value = now("A", playing = true, positionMs = 0)

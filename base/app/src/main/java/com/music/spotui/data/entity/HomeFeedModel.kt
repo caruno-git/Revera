@@ -105,6 +105,7 @@ sealed class HomeItem {
         override val imageUrl: String,
         val subtitle: String,
         val isEpisode: Boolean,
+        val uri: String = "",
     ) : HomeItem()
 
     @kotlinx.serialization.Serializable

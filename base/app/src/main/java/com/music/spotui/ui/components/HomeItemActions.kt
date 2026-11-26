@@ -46,8 +46,8 @@ internal fun onHomeItemClick(navController: NavController, item: HomeItem) {
         is HomeItem.Album -> navController.navigate(albumRoute(item.name, item.artists.ifBlank { item.subtitle }, item.id))
         is HomeItem.Artist -> navController.navigate(artistRoute(item.name, item.id))
         is HomeItem.Show ->
-            if (item.isEpisode) SongPlayer.playSong("episode:${item.id}")
-            else navController.navigate(showRoute(item.id, item.name))
+            if (item.isEpisode) SongPlayer.playSong(if (item.uri.startsWith("spotify:chapter:")) "chapter:${item.id}" else "episode:${item.id}")
+            else navController.navigate(showRoute(item.uri.ifBlank { item.id }, item.name))
         // Load the real playlist content by its Spotify id (daily mixes, etc).
         is HomeItem.Playlist ->
             if (item.id == Api.HomeCache.LIKED_SONGS_ID) navController.navigate(Routes.Liked.route)

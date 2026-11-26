@@ -87,7 +87,7 @@ fun EpisodeScreen(navController: NavController, episodeId: String, fallbackName:
     var menuOpen by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val np by SongPlayer.nowPlaying
-    val uri = "spotify:episode:$episodeId"
+    val uri = if (episodeId.startsWith("spotify:")) episodeId else "spotify:episode:$episodeId"
     val playing = np.uri == uri && SongPlayer.isPlaying()
     val saved = SongPlayer.library[uri] == true
 
@@ -159,7 +159,7 @@ fun EpisodeScreen(navController: NavController, episodeId: String, fallbackName:
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                                .clickable { navController.navigate(showRoute(showId, episode?.singer.orEmpty())) },
+                                .clickable { navController.navigate(showRoute(if (episode?.isChapter == true) "spotify:audiobook:$showId" else showId, episode?.singer.orEmpty())) },
                         ) {
                             GlideImage(
                                 model = episode?.coverUri,

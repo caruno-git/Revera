@@ -113,7 +113,7 @@
     item.provider === 'ad' || !!item.advertiser ||
     (item.metadata && (item.metadata.is_advertisement === 'true' || item.metadata.is_advertisement === true || !!item.metadata.ad_id));
   const kind = item => isAd(item) ? 'ad'
-    : /^spotify:episode:/.test(item.uri) ? 'episode' : 'track';
+    : /^spotify:(episode|chapter):/.test(item.uri) ? 'episode' : 'track';
 
   const track = item => item && {
     kind: kind(item),
@@ -144,7 +144,7 @@
     durationMs: s.duration,
     shuffle: !!s.shuffle,
     repeat: s.repeat, // 0 off, 1 context, 2 track
-    speed: (s.item && /^spotify:episode:/.test(s.item.uri) && window.__mspEpisodeRate) ? window.__mspEpisodeRate : s.speed,
+    speed: (s.item && /^spotify:(episode|chapter):/.test(s.item.uri) && window.__mspEpisodeRate) ? window.__mspEpisodeRate : s.speed,
     restrictions: s.restrictions || {},
     playbackId: s.playbackId || null,
   };
@@ -376,7 +376,7 @@
       let res = null;
       try { res = await need().player.setSpeed(s); } catch (e) {}
       const st = need().player.getState && need().player.getState();
-      const isEp = !!(st && st.item && /^spotify:episode:/.test(st.item.uri));
+      const isEp = !!(st && st.item && /^spotify:(episode|chapter):/.test(st.item.uri));
       const targetRate = isEp ? s : 1;
       const els = new Set([...(window.__mspMedia || []), ...document.querySelectorAll('audio, video'), ...await playerMedia()]);
       for (const el of els) {

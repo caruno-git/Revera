@@ -21,12 +21,12 @@ android {
     namespace = "app.myspoti.wear"
     compileSdk = 37
 
-    val version = (findProperty("appVersionName") as String?) ?: "1.0.4"
+    val version = (findProperty("appVersionName") as String?) ?: "1.0.10"
     defaultConfig {
         applicationId = if (automixLab) "app.revera.automixlab" else "app.revera.dev"
         minSdk = 30
         targetSdk = 36
-        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 204
+        versionCode = (findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 100010
         versionName = version
     }
     signingConfigs {

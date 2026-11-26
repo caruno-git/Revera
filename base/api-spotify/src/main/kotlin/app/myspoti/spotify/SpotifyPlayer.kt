@@ -1747,14 +1747,19 @@ class SpotifyPlayer(private val bridge: Bridge, private val scope: CoroutineScop
     @Volatile var remoteControl: Boolean = false
 
     /** The native engine plays the account's songs now (not the page's element). */
-    private fun engineHolds(): Boolean = audio?.takeIf { it.on && !mirroring }?.holdsPlayback == true
+    private fun engineHolds(): Boolean =
+        _state.value?.item?.uri?.startsWith("spotify:chapter:") != true &&
+            audio?.takeIf { it.on && !mirroring }?.holdsPlayback == true
 
     /** [audio] when it plays the account's songs now: turned on, not mirrored, and not controlling a remote Connect device. */
-    private fun outside(): AccountAudio? = audio?.takeIf { it.on && !mirroring && !remoteControl && !remoteActive }
+    private fun outside(): AccountAudio? = audio?.takeIf {
+        it.on && !mirroring && !remoteControl && !remoteActive &&
+            _state.value?.item?.uri?.startsWith("spotify:chapter:") != true
+    }
 
     override suspend fun play(contextUri: Uri, trackUri: Uri?, index: Int?, positionMs: Long?, order: List<Uri>?) {
         userPlays()
-        outside()?.let { a ->
+        outside()?.takeUnless { trackUri?.startsWith("spotify:chapter:") == true || contextUri.startsWith("spotify:audiobook:") }?.let { a ->
             pausedByUser = false
             userMoveAt = clock()
             // It could not play (it did not start, the licence was refused): the page plays, as before it existed.

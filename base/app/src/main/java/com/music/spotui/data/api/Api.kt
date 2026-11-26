@@ -174,13 +174,13 @@ class Api constructor(
     fun songOf(t: Track): SongsModel {
         val id = t.uri.substringAfterLast(':')
         val singer = t.artists.joinToString(", ") { it.name }
-        if (t.uri.startsWith("spotify:episode:")) return SongsModel(
-            id = stableId("episode:$id"),
+        if (t.uri.startsWith("spotify:episode:") || t.uri.startsWith("spotify:chapter:")) return SongsModel(
+            id = stableId(t.uri.removePrefix("spotify:")),
             title = t.name.take(128),
             album = t.album?.name.orEmpty(),
             singer = singer,
             coverUri = cover(t.album?.images.orEmpty()),
-            url = "episode:$id",
+            url = t.uri.removePrefix("spotify:"),
             explicit = t.explicit,
             durationMs = t.durationMs.toInt(),
             addedAt = t.addedAt.orEmpty(),
@@ -241,14 +241,15 @@ class Api constructor(
 
     private fun episodeSong(e: app.myspoti.api.Episode): SongsModel {
         val id = e.uri.substringAfterLast(':')
+        val key = if (e.uri.startsWith("spotify:chapter:")) "chapter:$id" else "episode:$id"
         val show = e.show?.name ?: "Podcast"
         return SongsModel(
-            id = stableId("episode:$id"),
+            id = stableId(key),
             title = e.name,
             album = show,
             singer = show,
             coverUri = cover(e.images).ifBlank { cover(e.show?.images.orEmpty()) },
-            url = "episode:$id",
+            url = key,
             durationMs = e.durationMs.toInt(),
             // No spotifyTrackId on purpose: an episode is keyed by its "episode:<id>" url
             // everywhere (download, playback). "playable" is what the downloader refuses on.
@@ -291,8 +292,8 @@ class Api constructor(
             MediaKind.ALBUM -> HomeItem.Album(id = id, name = c.title, imageUrl = image, subtitle = c.subtitle ?: context.getString(R.string.album_type_album), artists = c.subtitle.orEmpty())
             MediaKind.ARTIST -> HomeItem.Artist(name = c.title, imageUrl = image, id = id)
             MediaKind.PLAYLIST -> HomeItem.Playlist(name = c.title, imageUrl = image, subtitle = c.subtitle?.let { context.getString(R.string.assisted_curation_search_playlist) + " • $it" } ?: context.getString(R.string.assisted_curation_search_playlist), id = id)
-            MediaKind.SHOW, MediaKind.AUDIOBOOK -> HomeItem.Show(id = id, name = c.title, imageUrl = image, subtitle = c.subtitle.orEmpty(), isEpisode = false)
-            MediaKind.EPISODE, MediaKind.CHAPTER -> HomeItem.Show(id = id, name = c.title, imageUrl = image, subtitle = c.subtitle.orEmpty(), isEpisode = true)
+            MediaKind.SHOW, MediaKind.AUDIOBOOK -> HomeItem.Show(id = id, name = c.title, imageUrl = image, subtitle = c.subtitle.orEmpty(), isEpisode = false, uri = c.uri)
+            MediaKind.EPISODE, MediaKind.CHAPTER -> HomeItem.Show(id = id, name = c.title, imageUrl = image, subtitle = c.subtitle.orEmpty(), isEpisode = true, uri = c.uri)
             MediaKind.COLLECTION -> HomeItem.Playlist(name = c.title, imageUrl = image.ifBlank { LIKED_COVER }, subtitle = context.getString(R.string.assisted_curation_search_playlist), id = LIKED_SONGS_ID)
             else -> null
         }
@@ -355,9 +356,13 @@ class Api constructor(
         if (!ready()) return Result.failure(IllegalStateException(notSignedIn()))
         val filtered = readShows(LibraryFilter.PODCASTS)
         val shows = if (filtered.getOrNull().isNullOrEmpty()) readShows(LibraryFilter.ALL).takeIf { it.isSuccess || filtered.isFailure } ?: filtered else filtered
-        val out = shows.getOrElse { return Result.failure(it) }.map {
+        val books = readShows(LibraryFilter.AUDIOBOOKS).getOrDefault(emptyList())
+        val entries = shows.getOrElse { if (books.isEmpty()) return Result.failure(it) else emptyList() }
+            .plus(books).distinctBy { it.uri }
+        val out = entries.map {
             LibraryEntry(SHOW_PREFIX + it.uri.substringAfterLast(':'), it.name,
-                context.getString(R.string.album_type_podcast) + (it.subtitle?.let { s -> " • $s" } ?: ""), cover(it.images), isPlaylist = false)
+                (if (it.uri.startsWith("spotify:audiobook:")) context.getString(R.string.audiobooks_title) else context.getString(R.string.album_type_podcast)) +
+                    (it.subtitle?.let { s -> " • $s" } ?: ""), cover(it.images), isPlaylist = false, uri = it.uri)
         }
         if (out.isEmpty()) return Result.success(out)
         val news = LibraryEntry(NEW_EPISODES_ID, context.getString(R.string.new_episodes_title), context.getString(R.string.new_episodes_subtitle),
@@ -505,39 +510,43 @@ class Api constructor(
     suspend fun getShowPage(showId: String): Flow<Response<ShowPage>> = flow {
         emit(Response.Loading())
         if (!ready()) { emit(Response.Error(notSignedIn())); return@flow }
-        val uri = "spotify:show:$showId"
-        val head = runCatching { api.podcasts.show(uri) }.getOrNull()
+        val rawId = showId.substringAfterLast(':')
+        val uri = if (showId.startsWith("spotify:")) showId else "spotify:show:$rawId"
+        val bookUri = "spotify:audiobook:$rawId"
+        val head = if (uri.startsWith("spotify:show:")) runCatching { api.podcasts.show(uri) }.getOrNull() else null
         val rows = ArrayList<SongsModel>()
         var failure: Throwable? = null
         var audiobook = false
         var book: app.myspoti.api.Audiobook? = null
 
-        try {
-            var offset = 0
-            loop@ for (page in 0 until MAX_EPISODE_PAGES) {
-                val p = api.podcasts.episodes(uri, offset, 50)
-                if (p.items.isEmpty()) break@loop
-                rows += p.items.map(::episodeSong)
-                emit(Response.Success(pageOf(showId, head, book, rows, audiobook = false)))
-                offset = p.nextOffset ?: break@loop
+        if (!uri.startsWith("spotify:audiobook:")) {
+            try {
+                var offset = 0
+                loop@ for (page in 0 until MAX_EPISODE_PAGES) {
+                    val p = api.podcasts.episodes(uri, offset, 50)
+                    if (p.items.isEmpty()) break@loop
+                    rows += p.items.map(::episodeSong)
+                    emit(Response.Success(pageOf(rawId, head, book, rows, audiobook = false)))
+                    offset = p.nextOffset ?: break@loop
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                failure = e
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            failure = e
         }
 
         if (rows.isEmpty()) {
             // A book: its chapters come from queryBookChapters, not from the episodes query.
             audiobook = true
-            book = runCatching { api.podcasts.audiobook(uri) }.getOrNull()
+            book = runCatching { api.podcasts.audiobook(bookUri) }.getOrNull()
             try {
                 var offset = 0
                 loop@ for (page in 0 until MAX_EPISODE_PAGES) {
-                    val p = api.podcasts.chapters(uri, offset, 50)
+                    val p = api.podcasts.chapters(bookUri, offset, 50)
                     if (p.items.isEmpty()) break@loop
                     rows += p.items.map(::episodeSong)
-                    emit(Response.Success(pageOf(showId, head, book, rows, audiobook = true)))
+                    emit(Response.Success(pageOf(rawId, head, book, rows, audiobook = true)))
                     offset = p.nextOffset ?: break@loop
                 }
             } catch (e: CancellationException) {
@@ -552,8 +561,8 @@ class Api constructor(
             emit(Response.Error(failure.message ?: "error"))
             return@flow
         }
-        SongPlayer.registerContext(rows.map { it.url }, showContextUri(showId, book?.uri, audiobook))
-        emit(Response.Success(pageOf(showId, head, book, rows, audiobook)))
+        SongPlayer.registerContext(rows.map { it.url }, showContextUri(rawId, book?.uri, audiobook))
+        emit(Response.Success(pageOf(rawId, head, book, rows, audiobook)))
     }
 
     private fun pageOf(
@@ -585,7 +594,12 @@ class Api constructor(
     /** One episode (or chapter) by raw Spotify id, for the episode page. */
     suspend fun getEpisode(episodeId: String): SongsModel? {
         if (!ready()) return null
-        return runCatching { episodeSong(api.podcasts.episode("spotify:episode:$episodeId")) }.getOrNull()
+        val uri = when {
+            episodeId.startsWith("spotify:") -> episodeId
+            episodeId.startsWith("chapter:") || episodeId.startsWith("episode:") -> "spotify:$episodeId"
+            else -> "spotify:episode:$episodeId"
+        }
+        return runCatching { episodeSong(api.podcasts.episode(uri)) }.getOrNull()
     }
 
     /**

@@ -145,8 +145,12 @@ internal fun nowPlaying(t: JsonElement?): NowPlaying? {
     val uri = t.str("uri") ?: return null
     val kind = when (t.str("kind")) {
         "ad" -> ItemKind.AD
-        "episode" -> ItemKind.EPISODE
-        else -> if (uri.startsWith("spotify:ad:")) ItemKind.AD else ItemKind.TRACK
+        "episode", "chapter" -> ItemKind.EPISODE
+        else -> when {
+            uri.startsWith("spotify:ad:") -> ItemKind.AD
+            uri.startsWith("spotify:episode:") || uri.startsWith("spotify:chapter:") -> ItemKind.EPISODE
+            else -> ItemKind.TRACK
+        }
     }
     return NowPlaying(
         kind = kind,

@@ -507,7 +507,7 @@ object SongPlayer {
             id = uri, title = title, artist = p.getString("singer", "").orEmpty(), album = p.getString("album", "").orEmpty(),
             coverUrl = p.getString("cover", "").orEmpty().ifBlank { null }, durationMs = durationMs, positionMs = positionMs,
             playing = false, liked = state.likeState.value, shuffle = state.shuffle.value == true,
-            episode = uri.startsWith("spotify:episode:"),
+            episode = uri.startsWith("spotify:episode:") || uri.startsWith("spotify:chapter:"),
         ))
         // Spotify's own queue too: the page's replaces it once it reports.
         val rest = com.music.spotui.data.preferences.LastSession.decodeQueue(p.getString("queue", null))
@@ -615,7 +615,7 @@ object SongPlayer {
             album = n.album?.name.orEmpty(),
             singer = artists,
             coverUri = n.imageUrl.orEmpty(),
-            url = if (n.kind == ItemKind.EPISODE) "episode:" + n.uri.substringAfterLast(':') else buildSpotifyPlayQuery(id, n.name, artists),
+            url = if (n.kind == ItemKind.EPISODE) n.uri.removePrefix("spotify:") else buildSpotifyPlayQuery(id, n.name, artists),
             spotifyTrackId = id,
             explicit = n.explicit,
             durationMs = n.durationMs.toInt(),
@@ -878,7 +878,7 @@ object SongPlayer {
         val dealt = AppShuffle.onPage(s.contextUri.orEmpty(), uri, s.shuffle, trusted)
         if (trusted) state.shuffle.value = s.shuffle || dealt
         val reportedSpeed = s.speed.takeIf { it > 0.0 } ?: 1.0
-        val epNow = uri.startsWith("spotify:episode:")
+        val epNow = uri.startsWith("spotify:episode:") || uri.startsWith("spotify:chapter:")
         if (epNow && lastAppliedEpisodeSpeedUri != uri) {
             lastAppliedEpisodeSpeedUri = uri
             val savedEpSpeed = loadSavedPodcastSpeed()
@@ -982,7 +982,7 @@ object SongPlayer {
      * An answer that never comes leaves the heart as it is: no "not liked" is written for it.
      */
     private fun refreshCurrentLiked(fromState: Boolean = false) {
-        val uri = currentLikeUri().takeIf { it.startsWith(SPOTIFY_TRACK_PREFIX) || it.startsWith("spotify:episode:") } ?: return
+        val uri = currentLikeUri().takeIf { it.startsWith(SPOTIFY_TRACK_PREFIX) || it.startsWith("spotify:episode:") || it.startsWith("spotify:chapter:") } ?: return
         if (fromState && SystemClock.elapsedRealtime() - (likeCheckFailedAt[uri] ?: -LIKE_RETRY_AFTER_MS) < LIKE_RETRY_AFTER_MS) return
         if (!likeChecking.add(uri)) return
         scope.launch {
@@ -1061,7 +1061,7 @@ object SongPlayer {
         if (queueMovesInFlight.get() > 0) return
         if (SystemClock.elapsedRealtime() < staleUntil && order(q) in staleOrders) return
         fun items(list: List<app.myspoti.api.NowPlaying>) = list
-            .filter { it.uri.startsWith("spotify:track:") || it.uri.startsWith("spotify:episode:") }
+            .filter { it.uri.startsWith("spotify:track:") || it.uri.startsWith("spotify:episode:") || it.uri.startsWith("spotify:chapter:") }
             .map { QueueItem(songOf(it), it.uri, it.uid.orEmpty(), "") }
         _queue.value = EngineQueue(
             current = q.current?.let(::songOf),
@@ -1255,7 +1255,7 @@ object SongPlayer {
      * (busy, reloading) is sent once more instead of leaving the old song playing.
      */
     private suspend fun playChecked(itemUri: String, isLatest: () -> Boolean, play: suspend () -> Unit) {
-        if (NativeAudio.on && _activeDevice.value == null) {
+        if (NativeAudio.on && _activeDevice.value == null && !itemUri.startsWith("spotify:chapter:")) {
             play()
             return
         }
@@ -1376,7 +1376,8 @@ object SongPlayer {
         }
         // A song of another provider (the catalog's): played as its Spotify recording once found, alone.
         if (song.startsWith(com.music.spotui.data.catalog.CatalogRuntime.PLAY_PREFIX)) { playCatalogSong(song, context, askExtensions); return }
-        val routedId = if (song.startsWith("episode:")) null else spotifyTrackIdForPlayback(song)
+        val spoken = song.startsWith("episode:") || song.startsWith("chapter:")
+        val routedId = if (spoken) null else spotifyTrackIdForPlayback(song)
         if (_activeDevice.value == null && askExtensions && com.music.spotui.extensions.AudioRoute.asks(routedId, com.music.spotui.extensions.Extensions.hasAudioSource())) {
             val ctx = if (alone) "" else (contextUri ?: contextRegistry[song]).orEmpty()
             val shuffle = isShuffleOn()
@@ -1399,9 +1400,8 @@ object SongPlayer {
         routeAsk.incrementAndGet(); routingState.value = null
         LocalPlayer.stop()
         cancelBurst()
-        val episodeId = song.removePrefix("episode:").takeIf { song.startsWith("episode:") }
-        val trackId = episodeId ?: spotifyTrackIdForPlayback(song) ?: return
-        val itemUri = if (episodeId != null) "spotify:episode:$episodeId" else SPOTIFY_TRACK_PREFIX + trackId
+        val trackId = if (spoken) song.substringAfter(':') else spotifyTrackIdForPlayback(song) ?: return
+        val itemUri = if (spoken) "spotify:$song" else SPOTIFY_TRACK_PREFIX + trackId
         val ctx = if (alone) null else contextUri ?: contextRegistry[song]
         // What a smart shuffle ending brings back: the order of the last play that was not one.
         if (ctx != null) {
@@ -1411,7 +1411,7 @@ object SongPlayer {
             else if (sent != null) smartPlayed = ctx
         }
         playedByHand = itemUri
-        markPending(if (episodeId != null) "" else trackId, itemUri)
+        markPending(if (spoken) "" else trackId, itemUri)
         transport(pullBack = _activeDevice.value == null) { isLatest ->
             playChecked(itemUri, isLatest) {
                 Log.d(TAG, "playing $itemUri in ${ctx ?: "no context"}: ${queueTag()}")
@@ -1682,7 +1682,7 @@ object SongPlayer {
                 list != null && idx > 0 && !forward -> list.drop(idx - 1)
                 else -> upcomingSongs(target)
             }
-            val key = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") }
+            val key = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") || it.startsWith("chapter:") }
                 ?: (SPOTIFY_TRACK_PREFIX + target.spotifyTrackId)
             playSong(key, contextUri = ctx, songs = nextSongs)
             return true
@@ -1723,7 +1723,7 @@ object SongPlayer {
             if (np.uri.isBlank()) return@post
             val q = _queue.value
             val songs = (listOfNotNull(q.current) + (q.queued + q.nextUp).map { it.song }).takeIf { it.isNotEmpty() }
-            val key = if (np.uri.startsWith("spotify:episode:")) "episode:" + np.uri.removePrefix("spotify:episode:") else np.uri
+            val key = if (np.uri.startsWith("spotify:episode:") || np.uri.startsWith("spotify:chapter:")) np.uri.removePrefix("spotify:") else np.uri
             playSong(key, contextUri = np.contextUri.ifBlank { null }, positionMs = getCurrentPosition().takeIf { it > 0L }, songs = songs, askExtensions = false)
         }
     }
@@ -1742,11 +1742,11 @@ object SongPlayer {
                 np.prev ?: q.current
             }
             if (target != null) {
-                val key = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") }
+                val key = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") || it.startsWith("chapter:") }
                     ?: (if (target.spotifyTrackId.isNotBlank()) SPOTIFY_TRACK_PREFIX + target.spotifyTrackId else return@post)
                 playSong(key, contextUri = np.contextUri.ifBlank { null }, songs = upcomingSongs(target), askExtensions = false)
             } else if (np.uri.isNotBlank()) {
-                val key = if (np.uri.startsWith("spotify:episode:")) "episode:" + np.uri.removePrefix("spotify:episode:") else np.uri
+                val key = if (np.uri.startsWith("spotify:episode:") || np.uri.startsWith("spotify:chapter:")) np.uri.removePrefix("spotify:") else np.uri
                 playSong(key, contextUri = np.contextUri.ifBlank { null }, askExtensions = false)
             }
         }
@@ -2187,7 +2187,7 @@ object SongPlayer {
         // An episode ignored by a plain resume (the page's element stays paused, which is what
         // "the podcast stopped and the play button does nothing" was — B11) is asked for again
         // by its uri, where it was. Music keeps the plain resume: it never showed that.
-        if (!uri.startsWith("spotify:episode:")) return
+        if (!uri.startsWith("spotify:episode:") && !uri.startsWith("spotify:chapter:")) return
         scope.launch {
             kotlinx.coroutines.delay(EPISODE_RESUME_CHECK_MS)
             if (!playing || LocalPlayer.active.value) return@launch
@@ -2635,7 +2635,7 @@ object SongPlayer {
         plainOrderDue = null
         val uri = _nowPlaying.value.uri
         if (_nowPlaying.value.contextUri != ctx || uri.isBlank() || LocalPlayer.active.value) return false
-        val song = if (uri.startsWith("spotify:episode:")) "episode:" + uri.substringAfterLast(':') else uri
+        val song = if (uri.startsWith("spotify:episode:") || uri.startsWith("spotify:chapter:")) uri.removePrefix("spotify:") else uri
         Log.d(TAG, "smart shuffle off: $ctx back in the list's order from ${_nowPlaying.value.uri}")
         playSong(song, contextUri = ctx, order = plainOrder?.takeIf { it.first == ctx }?.second, positionMs = getCurrentPosition())
         return true
@@ -2750,16 +2750,16 @@ object SongPlayer {
 
     /** "Add to queue" for a podcast episode (its uri, not a track id). */
     fun addEpisodeToQueue(url: String) {
-        val id = url.removePrefix("episode:").takeIf { url.startsWith("episode:") } ?: return
+        if (!url.startsWith("episode:") && !url.startsWith("chapter:")) return
         Haptics.confirm()
-        command { api.player.addToQueue(listOf("spotify:episode:$id")) }
+        command { api.player.addToQueue(listOf("spotify:$url")) }
     }
 
     /**
      * What plays is a podcast episode: the player shows its own controls (30-second-free
      * skips, speed, no shuffle), not the music ones.
      */
-    val isEpisode: Boolean get() = _nowPlaying.value.uri.startsWith("spotify:episode:")
+    val isEpisode: Boolean get() = _nowPlaying.value.uri.startsWith("spotify:episode:") || _nowPlaying.value.uri.startsWith("spotify:chapter:")
 
     fun lyricsTrack(s: SongsModel) = com.music.spotui.data.api.LyricsApi.Track(
         trackId = s.spotifyTrackId, title = s.title, artist = s.singer, album = s.album,
@@ -2861,7 +2861,7 @@ object SongPlayer {
         if (LocalPlayer.active.value) { LocalPlayer.previousItem(); return }
         val np = _nowPlaying.value
         val target = np.prev ?: return
-        val uri = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") }
+        val uri = target.url.takeIf { it.startsWith("spotify:") || it.startsWith("episode:") || it.startsWith("chapter:") }
             ?: target.spotifyTrackId.takeIf { it.isNotBlank() }?.let { SPOTIFY_TRACK_PREFIX + it } ?: return
         cancelBurst()
         playSong(uri, contextUri = np.contextUri.ifBlank { null }, songs = upcomingSongs(target))
@@ -3608,11 +3608,11 @@ object SongPlayer {
             for (s in rows) {
                 val uri = when {
                     s.isDeviceFile -> { if (local) files[s.url]?.let { toLocal += it }; continue }
-                    s.url.startsWith("episode:") -> "spotify:episode:" + s.url.removePrefix("episode:")
+                    s.url.startsWith("episode:") || s.url.startsWith("chapter:") -> "spotify:${s.url}"
                     s.spotifyTrackId.isNotBlank() -> SPOTIFY_TRACK_PREFIX + s.spotifyTrackId
                     else -> continue
                 }
-                val own = if (local && !s.url.startsWith("episode:")) com.music.spotui.extensions.ExtensionAudio.queueTrack(s) else null
+                val own = if (local && !s.url.startsWith("episode:") && !s.url.startsWith("chapter:")) com.music.spotui.extensions.ExtensionAudio.queueTrack(s) else null
                 if (own != null) toLocal += own else toSpotify += uri
             }
             if (toLocal.isNotEmpty()) withContext(Dispatchers.Main) { LocalPlayer.enqueueAll(toLocal, next) }

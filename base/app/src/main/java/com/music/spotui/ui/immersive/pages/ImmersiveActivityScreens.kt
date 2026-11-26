@@ -288,7 +288,7 @@ fun ImmersiveEpisodeScreen(navController: NavController, episodeId: String, fall
     var menuOpen by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val np by SongPlayer.nowPlaying
-    val uri = "spotify:episode:$episodeId"
+    val uri = if (episodeId.startsWith("spotify:")) episodeId else "spotify:episode:$episodeId"
     val playing = np.uri == uri && SongPlayer.isPlaying()
     val saved = SongPlayer.library[uri] == true
 
@@ -312,7 +312,7 @@ fun ImmersiveEpisodeScreen(navController: NavController, episodeId: String, fall
                     Text(
                         episode?.singer.orEmpty(), style = Immersive.BodyStrong.copy(color = Immersive.Accent), maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 18.dp)
-                            .immersiveClickable(onClick = { navController.navigate(showRoute(showId, episode?.singer.orEmpty())) }),
+                            .immersiveClickable(onClick = { navController.navigate(showRoute(if (episode?.isChapter == true) "spotify:audiobook:$showId" else showId, episode?.singer.orEmpty())) }),
                     )
                 }
                 val date = episodeDateLabel(episode?.releaseDate.orEmpty())

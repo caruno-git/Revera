@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import app.myspoti.engine.BuildConfig
 import app.myspoti.engine.R
 
-const val DISCORD_URL = "https://discord.gg/S5gdMChKfY"
+const val DISCORD_URL = "https://discord.gg/TtxSAvhUc"
 
 
 private fun openUrl(context: Context, url: String) {

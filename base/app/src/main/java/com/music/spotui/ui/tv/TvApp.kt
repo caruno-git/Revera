@@ -273,7 +273,7 @@ private fun HomeItem.page(likedName: String): TvPage? = when (this) {
         else -> null
     }
     is HomeItem.Artist -> if (id.isBlank()) null else TvPage.Artist(id, name)
-    is HomeItem.Show -> if (id.isBlank() || isEpisode || !Features.PODCASTS) null else TvPage.Show(id, name)
+    is HomeItem.Show -> if (id.isBlank() || isEpisode || !Features.PODCASTS) null else TvPage.Show(uri.ifBlank { id }, name)
 }
 
 private fun HomeItem.subtitleText(): String = when (this) {
@@ -573,12 +573,12 @@ private const val LIKED = "spotify:collection:tracks"
 
 /** A Library row the TV opens: a playlist, an album, an artist or (podcasts on) a show. */
 private fun LibraryEntry.opens() = ":playlist:" in uri || ":album:" in uri || ":artist:" in uri || uri == LIKED ||
-    (Features.PODCASTS && ":show:" in uri)
+    (Features.PODCASTS && (":show:" in uri || ":audiobook:" in uri))
 
 /** The page a Library row opens. */
 private fun LibraryEntry.page(): TvPage = when {
     ":artist:" in uri -> TvPage.Artist(uri.substringAfterLast(':'), name)
-    ":show:" in uri -> TvPage.Show(uri.substringAfterLast(':'), name)
+    ":show:" in uri || ":audiobook:" in uri -> TvPage.Show(uri, name)
     else -> TvPage.Songs(this)
 }
 

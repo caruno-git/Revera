@@ -143,8 +143,7 @@ fun PodcastPlayerScreen(navController: NavController) {
     val showName = state.singer.value.ifBlank { np.contextName }
     val cover = state.coverUri.value
     val playing = state.playingState.value
-    val episodeId = np.uri.removePrefix("spotify:episode:")
-    val uri = "spotify:episode:$episodeId"
+    val uri = np.uri
     val saved = SongPlayer.library[uri] == true
     androidx.compose.runtime.LaunchedEffect(uri) { SongPlayer.requestSaved(uri) }
 
@@ -162,7 +161,7 @@ fun PodcastPlayerScreen(navController: NavController) {
         album = showName,
         singer = showName,
         coverUri = cover,
-        url = "episode:$episodeId",
+        url = uri.removePrefix("spotify:"),
         durationMs = duration.toInt(),
     )
 
@@ -181,7 +180,7 @@ fun PodcastPlayerScreen(navController: NavController) {
                 }
             }
         },
-        onOpen = { navController.navigate(com.music.spotui.ui.navigation.episodeRoute(episodeId, title)) },
+        onOpen = { navController.navigate(com.music.spotui.ui.navigation.episodeRoute(uri, title)) },
         onDismiss = { showMenu = false },
     )
 
@@ -398,13 +397,13 @@ internal fun episodeShowId(contextUri: String): String = when {
  */
 internal fun openEpisodeShow(navController: androidx.navigation.NavController, contextUri: String, episodeUri: String, showName: String) {
     val known = episodeShowId(contextUri)
-    if (known.isNotBlank()) { navController.navigate(com.music.spotui.ui.navigation.showRoute(known, showName)); return }
-    if (!episodeUri.startsWith("spotify:episode:")) return
+    if (known.isNotBlank()) { navController.navigate(com.music.spotui.ui.navigation.showRoute(contextUri, showName)); return }
+    if (!episodeUri.startsWith("spotify:episode:") && !episodeUri.startsWith("spotify:chapter:")) return
     kotlinx.coroutines.MainScope().launch {
         val show = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { app.myspoti.host.android.MyspotiRuntime.api.podcasts.episode(episodeUri).show }.getOrNull()
         } ?: return@launch
-        val id = show.uri.substringAfterLast(':').takeIf { it.isNotBlank() } ?: return@launch
-        runCatching { navController.navigate(com.music.spotui.ui.navigation.showRoute(id, show.name.ifBlank { showName })) }
+        if (show.uri.substringAfterLast(':').isBlank()) return@launch
+        runCatching { navController.navigate(com.music.spotui.ui.navigation.showRoute(show.uri, show.name.ifBlank { showName })) }
     }
 }
