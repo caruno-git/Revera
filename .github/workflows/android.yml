@@ -122,12 +122,18 @@ jobs:
       - name: Release APK
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$VERSION"
+          if [[ "$VERSION" == *-* ]]; then
+            VERSION_CODE="$((1000 + GITHUB_RUN_NUMBER))"
+          else
+            VERSION_CODE="$((MAJOR * 100000 + MINOR * 1000 + PATCH))"
+          fi
           # One build, every APK (ABI splits), same versionCode, named by :app:collectApks:
           # Revera-<version>-ARMv8.apk, -ARMv7.apk, -universal.apk, -TV.apk (betas: Revera-Beta-...).
           # The app's update check picks this phone's one (UpdateChecker.apkAsset).
           ./gradlew assembleRelease :app:collectApks \
             -PappVersionName="$VERSION" \
-            -PappVersionCode="$((1000 + GITHUB_RUN_NUMBER))" \
+            -PappVersionCode="$VERSION_CODE" \
             -PupdateRepo="$GITHUB_REPOSITORY"
 
       - name: Verify release APKs

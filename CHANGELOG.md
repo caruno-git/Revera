@@ -2,11 +2,6 @@
 
 Each release on GitHub shows its section below. The app shows it too when it offers the update. Every detail: [docs/CHANGELOG-full.md](docs/CHANGELOG-full.md).
 
-## 1.0.9
-
-- **Spotify code sign-in**: send and confirm email-code requests through a dedicated transport while retaining the embedded sign-in page and its session cookies.
-- **Verification note**: code delivery was verified; full sign-in and session retention remain pending confirmation.
-
 ## 1.0.10
 
 - **Spotify playback**: Pause now controls the Web Player when it is playing instead of sending the command to an idle native engine.
@@ -16,6 +11,11 @@ Each release on GitHub shows its section below. The app shows it too when it off
 - **Immersive lyrics**: fullscreen lyrics animate into and out of the player.
 - **Community**: updated every Revera Discord link to the current invite.
 - **Playback**: Music no longer pauses by itself when a mirrored Spotify song starts unheard in the Web Player and Android sends a pause to our media session.
+
+## 1.0.9
+
+- **Spotify code sign-in**: send and confirm email-code requests through a dedicated transport while retaining the embedded sign-in page and its session cookies.
+- **Verification note**: code delivery was verified; full sign-in and session retention remain pending confirmation.
 
 ## 1.0.8
 
