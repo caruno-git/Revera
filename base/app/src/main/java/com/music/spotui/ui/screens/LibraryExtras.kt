@@ -413,7 +413,7 @@ fun FolderScreen(navController: NavController, uri: String, initialName: String)
         name = newName
         LibraryFolders.rename(context, uri, newName) { ok -> if (!ok) name = before }
     }
-    Column(Modifier.fillMaxSize().background(AppBackground)) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         val n = entries?.size
         PageHeader(name, n?.let { pluralStringResource(R.plurals.add_to_playlist_folder_subtitle_playlists_count, it, it.toString()) }, navController) { menu = true }
         when (val list = entries) {
@@ -486,7 +486,7 @@ fun LocalPlaylistScreen(navController: NavController, id: String) {
     }
     if (renaming) NameDialog(stringResource(R.string.local_rename), playlist.name, stringResource(R.string.local_rename),
         onDismiss = { renaming = false }) { renaming = false; LocalPlaylists.rename(id, it) }
-    Column(Modifier.fillMaxSize().background(AppBackground)) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         PageHeader(playlist.name, stringResource(R.string.local_playlist_subtitle) + " • " +
             pluralStringResource(R.plurals.add_to_playlist_subtitle_songs_count, playlist.items.size, playlist.items.size.toString()),
             navController) { menu = true }

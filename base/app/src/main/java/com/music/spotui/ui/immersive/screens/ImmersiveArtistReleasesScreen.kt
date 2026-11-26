@@ -76,7 +76,7 @@ fun ImmersiveArtistReleasesScreen(navController: NavController, artistName: Stri
         navController.navigate(albumRoute(album.name, album.artists.ifBlank { artistName }, album.spotifyId))
     }
 
-    Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+    Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(top = immersiveTopContentPadding(), bottom = Immersive.BottomChrome),

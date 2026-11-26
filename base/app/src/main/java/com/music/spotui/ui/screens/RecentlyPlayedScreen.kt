@@ -69,7 +69,7 @@ import com.music.spotui.ui.components.groupSubtitle
 import com.music.spotui.ui.components.openContext
 import com.music.spotui.ui.components.playUri
 
-private val Background: Color get() = com.music.spotui.ui.theme.AppBackground
+private val Background: Color get() = com.music.spotui.ui.theme.PageFill
 private val Subtle: androidx.compose.ui.graphics.Color get() = AppMuted
 /** The pill and chevron greys of Spotify's own page. */
 private val ChipIdle: androidx.compose.ui.graphics.Color get() = tone(0xFF282828)

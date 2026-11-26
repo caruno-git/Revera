@@ -108,7 +108,7 @@ fun EpisodeScreen(navController: NavController, episodeId: String, fallbackName:
         )
     }
 
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         LazyColumn(
             contentPadding = PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
             modifier = Modifier.fillMaxSize(),
@@ -117,7 +117,7 @@ fun EpisodeScreen(navController: NavController, episodeId: String, fallbackName:
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF34302B), 0f), AppBackground)))
+                        .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF34302B), 0f), com.music.spotui.ui.theme.PageFade)))
                         .statusBarsPadding(),
                 ) {
                     Box(

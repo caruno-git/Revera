@@ -49,13 +49,25 @@ object ExtensionLook {
     }
 
     /** The colour a look sets for [key] ([UiStyle.ACCENT], [UiStyle.BACKGROUND], [UiStyle.SURFACE]), or null. */
-    fun color(key: String): Color? = applied.colors[key]?.let { Color(it) }
+    fun color(key: String): Color? = applied.colors[key]?.let { Color(it) } ?: themeColor(key)
+
+    /**
+     * The colour the picked theme's scheme sets for [key] (also `text` and `muted`), or null: under
+     * an extension's look, and none while a protected surface is on screen.
+     */
+    fun themeColor(key: String): Color? = if (shielded) null else com.music.spotui.data.preferences.ThemePref.color(key)
 
     /** Whether a look hides [part]. */
-    fun hides(part: UiPart): Boolean = part in applied.hidden
+    fun hides(part: UiPart): Boolean = part in applied.hidden || (!shielded && part in com.music.spotui.data.preferences.ThemePref.hidden)
 
     /** The text size a look asks for, 1 without one. */
-    val textScale: Float get() = applied.textScale ?: 1f
+    val textScale: Float get() = applied.textScale ?: (if (shielded) null else com.music.spotui.data.preferences.ThemePref.textScale) ?: 1f
+
+    /** The wallpapers the enabled looks offer (`ui.wallpapers`), in the user's order; none while a protected surface is on screen. */
+    val wallpapers: List<app.myspoti.extensions.PackWallpaper> get() = applied.wallpapers
+
+    /** A protected surface is on screen: nothing of a look, the wallpaper included, shows. */
+    val isShielded: Boolean get() = shielded
 
     /** The Classic look's bottom tabs as a look orders them (`home`, `search`, `library`), or null. */
     val navOrder: List<String>? get() = applied.navOrder

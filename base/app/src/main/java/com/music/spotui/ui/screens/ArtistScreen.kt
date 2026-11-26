@@ -101,9 +101,10 @@ fun ArtistScreen(navController: NavController, artistName: String, artistId: Str
     LaunchedEffect(artistName, artistId) { artistViewModel.loadArtistOverview(artistName, artistId) }
 
     Surface(
+        color = com.music.spotui.ui.theme.PageFill,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         // The page fades in over its placeholder instead of replacing it in one frame.
         com.music.spotui.ui.components.LoadedFade(overview is Response.Loading) { loading ->
@@ -206,7 +207,7 @@ private fun ArtistOverviewContent(
         contentPadding = PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         // ── Header: big artist image with scrim + name ──
         item {
@@ -771,9 +772,10 @@ fun ArtistReleasesScreen(navController: NavController, artistName: String, artis
     LaunchedEffect(artistName, artistId) { artistViewModel.loadArtistOverview(artistName, artistId) }
 
     Surface(
+        color = com.music.spotui.ui.theme.PageFill,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         val data = (overview as? Response.Success)?.data
         val releases = data?.popularReleases ?: emptyList()
@@ -795,7 +797,7 @@ fun ArtistReleasesScreen(navController: NavController, artistName: String, artis
             contentPadding = PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(AppBackground.toArgb()))
+                .background(com.music.spotui.ui.theme.PageFill)
         ) {
             item {
                 Row(

@@ -28,6 +28,7 @@ import androidx.navigation.NavGraphBuilder
 import com.music.spotui.ui.theme.AppBackground
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -378,10 +379,18 @@ private fun NavGraphBuilder.page(
         // (more columns). The inner box is always there, so a resize never rebuilds the page.
         val capped = com.music.spotui.ui.components.windowSize().large &&
             entry.destination.route?.substringBefore('/')?.substringBefore('?') !in FullWidthRoutes
-        // Immersive look: every page (Classic fallbacks too) sits on its black page colour.
+        // Every page sits on its page colour (Immersive: its black, Classic fallbacks too). With a
+        // wallpaper the colour is only there while the page moves (sliding pages never show through
+        // each other) and fades away once it has settled, so the wallpaper is behind it.
+        val pageCover = if (immersive) com.music.spotui.ui.immersive.Immersive.Page else AppBackground
+        val coverAlpha by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (com.music.spotui.data.preferences.WallpaperPref.active && settled.value) 0f else 1f,
+            animationSpec = androidx.compose.animation.core.tween(180),
+            label = "wallpaperCover",
+        )
         Box(Modifier.fillMaxSize()
             .then(if (fade == null) Modifier else Modifier.graphicsLayer { this.alpha = fade.value })
-            .background(if (immersive) com.music.spotui.ui.immersive.Immersive.Page else AppBackground)) {
+            .background(pageCover.copy(alpha = coverAlpha))) {
             Box(
                 Modifier.fillMaxHeight().then(
                     if (capped) Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)

@@ -266,7 +266,7 @@ fun WhatsNewScreen(navController: NavController) {
     val effectiveContent = if (podcastsShown) content else WhatsNewContent.MUSIC
     val feed = rememberWhatsNewFeed(effectiveContent, attempt)
 
-    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.AppBackground).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 8.dp),

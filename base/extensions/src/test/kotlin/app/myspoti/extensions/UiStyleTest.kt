@@ -68,4 +68,40 @@ class UiStyleTest {
         val protectedKeys = ProtectedSurface.entries.map { it.key }.toSet()
         assertTrue(UiPart.entries.none { it.key in protectedKeys || it.key.substringBefore('.') in protectedKeys })
     }
+
+    @Test fun wallpapersAloneAreALook() {
+        val m = manifest("""{ "wallpapers": [ { "title": "Dunes", "url": "https://cdn.example.com/dunes.jpg" } ] }""")
+        assertEquals(emptyList<String>(), m.problems())
+        assertEquals(1, m.look()?.wallpapers?.size)
+    }
+
+    @Test fun wallpapersAreChecked() {
+        val ok = manifest(
+            """{ "wallpapers": [
+                 { "title": "Dunes", "url": "https://cdn.example.com/dunes.jpg" },
+                 { "title": "Rain", "url": "https://cdn.example.com/rain.mp4", "thumb": "https://cdn.example.com/rain.jpg" } ] }""",
+        )
+        assertEquals(emptyList<String>(), ok.problems())
+        assertEquals(listOf(false, true), ok.look()!!.wallpapers.map { it.video })
+
+        val bad = manifest(
+            """{ "wallpapers": [
+                 { "title": " ", "url": "https://cdn.example.com/a.jpg" },
+                 { "title": "B", "kind": "gif", "url": "https://cdn.example.com/b.gif" },
+                 { "title": "C", "url": "http://cdn.example.com/c.jpg" },
+                 { "title": "D", "url": "https://192.168.1.2/d.jpg" },
+                 { "title": "E", "url": "https://cdn.example.com/e.jpg", "thumb": "http://cdn.example.com/t.jpg" } ] }""",
+        ).problems()
+        (0..4).forEach { i -> assertTrue(bad.toString(), bad.any { it.startsWith("ui.wallpapers[$i]") }) }
+    }
+
+    @Test fun appliedLooksListTheValidWallpapersInTheUsersOrder() {
+        val a = UiStyle(wallpapers = listOf(WallpaperPick("One", "https://a.example.com/1.jpg"), WallpaperPick("Bad", "http://a.example.com/2.jpg")))
+        val b = UiStyle(wallpapers = listOf(WallpaperPick(" Two ", "https://b.example.com/2.webm")))
+        val look = AppliedLook.of(listOf("a" to a, "b" to b))
+        assertEquals(listOf("One", "Two"), look.wallpapers.map { it.title })
+        assertEquals(listOf("a", "b"), look.wallpapers.map { it.extensionId })
+        assertTrue(look.wallpapers[1].video)
+        assertTrue(AppliedLook.NONE.wallpapers.isEmpty())
+    }
 }

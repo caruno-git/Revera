@@ -114,7 +114,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import app.myspoti.host.android.MyspotiRuntime
 
 private val SpotifyGreen: Color get() = com.music.spotui.ui.theme.AppAccent
-private val PageBackground: Color get() = com.music.spotui.ui.theme.AppBackground
+private val PageBackground: Color get() = com.music.spotui.ui.theme.PageFill
 
 /** Album / playlist page, loaded by Spotify id and laid out like the official app. */
 class ContextViewModel(
@@ -835,7 +835,7 @@ private fun ContextContent(navController: NavController, vm: ContextViewModel, p
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(headerTint(tint, 0.25f), PageBackground)))
+                    .background(Brush.verticalGradient(listOf(headerTint(tint, 0.25f), com.music.spotui.ui.theme.PageFade)))
                     .statusBarsPadding()
             ) {
                 Box(

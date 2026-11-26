@@ -151,7 +151,7 @@ fun LibraryScreen(navController: NavController) {
             // The rows (and their header with them) capped at a readable width, centred, on wide
             // windows; the grid uses the whole width.
             .then(if (gridView) Modifier else Modifier.cappedPageWidth())
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
             .statusBarsPadding()
     ) {
         // Header: title + account avatar. Built by hand (rather than a fixed-height
@@ -529,7 +529,7 @@ fun SumUpLibraryScreen(
             // Rows capped at a readable width, centred, on wide windows (they ran 1800 dp long);
             // the grid layout keeps the whole width.
             .cappedPageWidth()
-            .background(com.music.spotui.ui.theme.AppBackground)
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         itemsIndexed(rows, key = { _, e -> LibraryOrder.key(e) }) { index, entry ->
             val key = LibraryOrder.key(entry)
@@ -775,7 +775,7 @@ fun LibraryGridScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .background(com.music.spotui.ui.theme.AppBackground),
+            .background(com.music.spotui.ui.theme.PageFill),
         contentPadding = PaddingValues(16.dp, 10.dp, 16.dp, com.music.spotui.ui.components.bottomBarsSpace()),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -875,7 +875,7 @@ private fun LibrarySkeleton(padding: PaddingValues) {
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .background(com.music.spotui.ui.theme.AppBackground)
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         Spacer(modifier = Modifier.height(10.dp))
         repeat(8) {

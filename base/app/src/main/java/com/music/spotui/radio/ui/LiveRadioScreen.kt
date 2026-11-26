@@ -68,13 +68,13 @@ fun LiveRadioScreen(navController: NavController) {
     val state = rememberLiveRadioState()
     val favorites = RadioFavoritesStore.list()
 
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(
             bottom = com.music.spotui.ui.components.bottomBarsSpace())) {
             item {
                 Column(
                     Modifier.fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF1C6E7A), 0f), AppBackground)))
+                        .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF1C6E7A), 0f), com.music.spotui.ui.theme.PageFade)))
                         .statusBarsPadding().padding(horizontal = 16.dp),
                 ) {
                     Spacer(Modifier.height(56.dp))

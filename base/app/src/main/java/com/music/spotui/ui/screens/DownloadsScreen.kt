@@ -116,7 +116,7 @@ fun DownloadsScreen(navController: NavController) {
         LocalPlayer.play(tracks.map(OfflineStore::toLocalTrack), index, shuffle = shuffle, context = title)
     }
 
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         if (tracks.isEmpty() && waiting.isEmpty()) Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -130,7 +130,7 @@ fun DownloadsScreen(navController: NavController) {
         } else LazyColumn(Modifier.fillMaxSize()) {
             item {
                 Column(
-                    Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(headerTint(Color(0xFF1D6B45), 0f), AppBackground)))
+                    Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(headerTint(Color(0xFF1D6B45), 0f), com.music.spotui.ui.theme.PageFade)))
                         .statusBarsPadding().padding(horizontal = 16.dp),
                 ) {
                     Spacer(Modifier.height(56.dp))

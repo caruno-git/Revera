@@ -29,11 +29,18 @@ object Immersive {
     /** Black, or an extension's look background (unless the AMOLED setting is on). */
     val Page: Color get() = if (app.myspoti.power.EnergySettings.oledBlack) Color.Black
         else com.music.spotui.extensions.ExtensionLook.color(app.myspoti.extensions.UiStyle.BACKGROUND) ?: Color.Black
+    /** What a page paints behind itself: [Page], or nothing while the wallpaper shows (see WallpaperPref). For a whole page's background only. */
+    val PageFill: Color get() =
+        if (com.music.spotui.data.preferences.WallpaperPref.active) Color.Transparent else Page
+    /** The far end of a header's fade into the page: [Page], or the same colour with no alpha while the wallpaper shows. */
+    val PageFade: Color get() =
+        if (com.music.spotui.data.preferences.WallpaperPref.active) Page.copy(alpha = 0f) else Page
     val Raised: Color get() = com.music.spotui.extensions.ExtensionLook.color(app.myspoti.extensions.UiStyle.SURFACE) ?: Color(0xFF1C1C1E)
     val Separator = Color.White.copy(alpha = 0.10f)
-    val Text = Color.White
-    val TextSecondary = Color.White.copy(alpha = 0.60f)
-    val TextTertiary = Color.White.copy(alpha = 0.38f)
+    // A theme's text and muted colours (Settings > Themes), else the app's white at three strengths.
+    val Text: Color get() = com.music.spotui.extensions.ExtensionLook.themeColor("text") ?: Color.White
+    val TextSecondary: Color get() = com.music.spotui.extensions.ExtensionLook.themeColor("muted") ?: Color.White.copy(alpha = 0.60f)
+    val TextTertiary: Color get() = com.music.spotui.extensions.ExtensionLook.themeColor("muted")?.copy(alpha = 0.65f) ?: Color.White.copy(alpha = 0.38f)
     var trackAccent by mutableStateOf<Color?>(null)
 
     fun accentFromPalette(colors: List<Color>): Color? {

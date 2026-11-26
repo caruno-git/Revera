@@ -114,7 +114,7 @@ fun ProfileScreen(navController: NavController, userId: String, userName: String
     }
     LazyColumn(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
-        modifier = Modifier.fillMaxSize().background(AppBackground).statusBarsPadding(),
+        modifier = Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding(),
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

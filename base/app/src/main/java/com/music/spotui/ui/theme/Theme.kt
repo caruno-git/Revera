@@ -73,7 +73,21 @@ fun SpotuiTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.attributes = window.attributes.apply { preferredRefreshRate = policy.displayRefreshCap }
+            // The screen mode: 120 Hz when asked for (and the phone is not hot), 60 with the saver or the heat.
+            // Set only when it changes: each change lays the window out again.
+            val display = view.display
+            val modeId = if (display == null) 0 else {
+                val m = display.mode
+                app.myspoti.power.DisplayModes.pick(
+                    display.supportedModes.map { app.myspoti.power.DisplayModeInfo(it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate) },
+                    app.myspoti.power.DisplayModeInfo(m.modeId, m.physicalWidth, m.physicalHeight, m.refreshRate),
+                    policy.displayRefreshCap, policy.preferHighRefresh,
+                )
+            }
+            val attrs = window.attributes
+            if (attrs.preferredRefreshRate != policy.displayRefreshCap || attrs.preferredDisplayModeId != modeId) {
+                window.attributes = attrs.apply { preferredRefreshRate = policy.displayRefreshCap; preferredDisplayModeId = modeId }
+            }
             window.statusBarColor = Color.Transparent.toArgb()
             // White icons on the dark palette.
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="themes_title">Themes</string>
+    <string name="themes_detail">Colour themes, like Spicetify: install one, pick its colour scheme</string>
+    <string name="themes_default">App default</string>
+    <string name="themes_default_detail">The app\'s own colours (and your accent colour)</string>
+    <string name="themes_match">Match the wallpaper</string>
+    <string name="themes_match_detail">The accent, page, card and text colours follow your wallpaper, every time it changes. They go over the theme you pick; an extension\'s look still goes over them.</string>
+    <string name="themes_match_none">Set a wallpaper (Settings, Wallpaper) and the colours follow it.</string>
+    <string name="themes_section_pick">Theme</string>
+    <string name="themes_section_scheme">Colour scheme</string>
+    <string name="themes_section_add">Add a theme</string>
+    <string name="themes_schemes_count">%1$d colour schemes</string>
+    <string name="themes_file">From a file</string>
+    <string name="themes_file_detail">A theme.json from your phone</string>
+    <string name="themes_link">From a link</string>
+    <string name="themes_link_detail">An https address of a theme file</string>
+    <string name="themes_link_add">Install from this link</string>
+    <string name="themes_install_failed">Theme not installed: %1$s</string>
+    <string name="themes_remove">Remove this theme</string>
+    <string name="themes_note">A theme sets the accent, page, card and text colours, and can set the text size and hide parts of the app. An extension\'s look applies over it. Pages stay dark; the black background setting still wins, and a wallpaper still shows through. Installed themes are plain files: nothing in them runs.</string>
+</resources>

@@ -130,3 +130,21 @@ own look back at once.
 - A manifest with a `ui` object but without the `ui.style` action installs as before and its `ui`
   is ignored (`check` warns): `ui` was an unknown key until now, and unknown keys are ignored.
 - Nothing about the other actions, hooks or the `myspoti` object changed.
+
+
+## `ui.wallpapers`: wallpapers to pick
+
+A look may offer pictures and silent looping videos as the app's wallpaper, in the Classic look and in the Immersive one:
+
+```json
+"ui": { "wallpapers": [
+  { "title": "Dunes", "url": "https://example.com/dunes.jpg" },
+  { "title": "Rain", "url": "https://example.com/rain.mp4", "kind": "video", "thumb": "https://example.com/rain.jpg" }
+] }
+```
+
+- 24 at most; `title` 40 characters; `kind` is `image`, `video` or `auto` (by the address: `.mp4`, `.webm`, `.m3u8`...); `thumb` is an optional preview picture.
+- Addresses are https on a public host name (no IP address, no login, no local name). The app fetches them; the script never draws or downloads anything.
+- The extension only offers: the user picks one, or adds their own from the phone or a link, and sets the dimming (Classic: Settings, Appearance, Wallpaper; Immersive: Settings, Display, Wallpaper). The page colour is the dimming, so text stays readable.
+- Turning the extension off removes its wallpapers from the list (and the one in use, if it came from it). A protected surface on screen hides the wallpaper like the rest of a look, and so does the black background setting.
+- Sample: [samples/wallpapers](samples/wallpapers).

@@ -14,7 +14,7 @@ internal fun artworkLoopScale(ms: Long): Float =
 internal fun Modifier.artworkLoop(visibleAndPlaying: Boolean): Modifier {
     if (!visibleAndPlaying || !com.music.spotui.data.preferences.ArtworkLoopPref.on || com.music.spotui.ui.look.rememberReduceMotion()) return this
     val energy by app.myspoti.power.EnergySettings.state.collectAsStateWithLifecycle()
-    if (energy.policy.saverEnabled) return this
+    if (energy.policy.lowPower) return this
     val clock = rememberFrameClock(true, 24)
     return clipToBounds().graphicsLayer {
         val scale = artworkLoopScale(clock.value / 1_000_000L)

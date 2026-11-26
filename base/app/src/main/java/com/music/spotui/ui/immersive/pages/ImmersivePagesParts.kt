@@ -300,6 +300,6 @@ internal fun ImmersiveSheetRow(
 @Composable
 internal fun ImmersivePageFrame(content: @Composable BoxScope.() -> Unit) {
     CompositionLocalProvider(LocalOverscrollFactory provides rememberImmersiveOverscrollFactory()) {
-        Box(Modifier.fillMaxSize().background(Immersive.Page), content = content)
+        Box(Modifier.fillMaxSize().background(Immersive.PageFill), content = content)
     }
 }

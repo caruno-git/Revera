@@ -245,7 +245,7 @@ fun ImmersiveLibraryScreen(navController: NavController) {
     val avatar = (account as? Response.Success)?.data
 
     val refreshing by vm.refreshing.collectAsState()
-    Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+    Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
       // Pull down to read the library again, as in the Classic look.
       androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = refreshing,

@@ -147,7 +147,7 @@ fun ImmersiveHomeScreen(navController: NavController) {
     // The shortcuts at the top load in the background, ready before a tap.
     LaunchedEffect(shortcuts) { prefetchHomeShortcuts(shortcuts) }
 
-    Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+    Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
         LazyColumn(
             state = listState,
             // The greeting is the floating header's own title, so the feed starts right under it

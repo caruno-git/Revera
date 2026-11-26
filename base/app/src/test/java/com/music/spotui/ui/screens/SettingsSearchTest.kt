@@ -23,9 +23,9 @@ class SettingsSearchTest {
 
     @Test fun everyPlaceIsReachable() {
         val pages = setOf("Root", "Playback", "Sources", "Lyrics", "StreamingWifi", "StreamingCell", "Crossfade", "Downloads", "DownloadQuality",
-            "Storage", "Data", "Display", "Look", "Rotation", "Language", "LyricsLanguage", "App", "Accounts", "Library")
+            "Storage", "Data", "Display", "Look", "Rotation", "Language", "LyricsLanguage", "App", "Accounts", "Library", "Wallpaper", "Themes")
         assertTrue(SettingsSearch.immersive.all { it.place in pages })
-        assertTrue(SettingsSearch.classic.all { it.place == "transitions" || it.place.toIntOrNull() in 0..7 })
+        assertTrue(SettingsSearch.classic.all { it.place == "transitions" || it.place == "wallpaper" || it.place == "themes" || it.place.toIntOrNull() in 0..7 })
     }
 
     @Test fun musicDuringCallsIsIndexedUnderPlaybackInBothLooks() {

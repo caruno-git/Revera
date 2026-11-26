@@ -120,7 +120,7 @@ fun ImmersiveShowScreen(navController: NavController, showId: String, showName: 
     }
 
     ImmersiveOverscrollHost {
-        Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+        Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(bottom = Immersive.BottomChrome),

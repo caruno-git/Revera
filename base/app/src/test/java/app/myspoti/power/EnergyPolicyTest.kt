@@ -67,4 +67,22 @@ class EnergyPolicyTest {
         assertFalse(EnergyState(canvasEnabled = false).policy.allowCanvas)
         assertTrue(EnergyState().policy.allowCanvas)
     }
+    @Test fun defaultAsksForTheHighestRefreshRate() {
+        val p = EnergyPolicy.resolve(false, false)
+        assertTrue(p.preferHighRefresh); assertFalse(p.thermalLimited); assertFalse(p.lowPower)
+        assertFalse(EnergyPolicy.resolve(false, false, smoothDisplay = false).preferHighRefresh)
+    }
+    @Test fun heatLimitsTheScreenAndAnimationsLikeTheSaverButNotLookups() {
+        val p = EnergyPolicy.resolve(false, false, thermalLimited = true)
+        assertTrue(p.thermalLimited); assertFalse(p.saverEnabled); assertTrue(p.lowPower)
+        assertEquals(60f, p.displayRefreshCap, 0f); assertFalse(p.preferHighRefresh)
+        assertEquals(480, p.videoMaxHeight); assertEquals(20, p.progressFps); assertEquals(30, p.lyricsFps)
+        assertFalse(p.allowCanvas); assertTrue(p.allowBackgroundLookups)
+    }
+    @Test fun theHeatGuardIsOnlyWhenTheUserLeavesItOn() {
+        assertTrue(EnergyState(thermalHot = true).policy.thermalLimited)
+        assertFalse(EnergyState(thermalHot = true, thermalGuard = false).policy.thermalLimited)
+        assertFalse(EnergyState(thermalHot = false).policy.thermalLimited)
+        assertFalse(EnergyState(smoothDisplay = false).policy.preferHighRefresh)
+    }
 }

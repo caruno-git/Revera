@@ -105,7 +105,7 @@ fun QueueScreen(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(com.music.spotui.ui.theme.AppBackground)
+            .background(com.music.spotui.ui.theme.PageFill)
             .statusBarsPadding()
     ) {
         Row(

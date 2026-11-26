@@ -54,7 +54,7 @@ fun ImmersiveCategoryScreen(navController: NavController, genre: String, title: 
     val gridState = rememberLazyGridState()
     val collapse = gridCollapse(gridState)
 
-    Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+    Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Fixed(com.music.spotui.ui.components.windowSize().columns(2, 200.dp)),

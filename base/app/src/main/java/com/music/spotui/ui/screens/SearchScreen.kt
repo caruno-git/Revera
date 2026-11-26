@@ -100,9 +100,10 @@ fun SearchScreen(navController: NavController) {
     val searchResults = (results as? Response.Success)?.data ?: SearchResults()
 
     Surface(
+        color = com.music.spotui.ui.theme.PageFill,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         SumUpSearchScreen(navController = navController, searchResults, searchViewModel,
             loading = results is Response.Loading, failed = results is Response.Error)
@@ -190,7 +191,7 @@ fun SumUpSearchScreen(
             // The field and the results capped at a readable width, centred, on wide windows
             // (they ran 1800 dp long); the browse grid spreads over that width.
             .cappedPageWidth()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
             .statusBarsPadding()
 
     ){

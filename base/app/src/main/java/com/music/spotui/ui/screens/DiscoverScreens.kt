@@ -64,7 +64,7 @@ import com.music.spotui.ui.navigation.episodeRoute
 import com.music.spotui.ui.navigation.showRoute
 import com.music.spotui.ui.theme.AppAccent
 
-private val Background: Color get() = com.music.spotui.ui.theme.AppBackground
+private val Background: Color get() = com.music.spotui.ui.theme.PageFill
 private val Subtle: androidx.compose.ui.graphics.Color get() = AppMuted
 
 @Composable

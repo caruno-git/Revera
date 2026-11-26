@@ -8,7 +8,7 @@ internal class SettingsEntry(val title: Int, val detail: Int, val place: String)
 /**
  * What the search button of Settings looks through, in both looks: the rows of every page, by
  * their title and description in the app's language. A hit opens the page (Immersive: a
- * `SettingsPage` name) or the tab (Classic: its index, or `transitions` for that page) it is on.
+ * `SettingsPage` name) or the tab (Classic: its index, or `transitions`, `wallpaper` or `themes` for those pages) it is on.
  * Kept by hand with the pages: a row added to a page is added here too.
  */
 internal object SettingsSearch {
@@ -56,6 +56,8 @@ internal object SettingsSearch {
         SettingsEntry(R.string.data_saver_title, R.string.data_saver_summary, "Data"),
         SettingsEntry(R.string.background_playback_title, 0, "Data"),
         SettingsEntry(R.string.settings_look_title, 0, "Display"),
+        SettingsEntry(R.string.wallpaper_title, R.string.wallpaper_detail, "Wallpaper"),
+        SettingsEntry(R.string.themes_title, R.string.themes_detail, "Themes"),
         SettingsEntry(R.string.settings_dynamic_color_title, R.string.settings_dynamic_color_detail, "Display"),
         SettingsEntry(R.string.settings_system_font_title, R.string.settings_system_font_detail, "Display"),
         SettingsEntry(R.string.settings_liquid_glass_title, R.string.settings_liquid_glass_detail, "Display"),
@@ -146,6 +148,8 @@ internal object SettingsSearch {
         SettingsEntry(R.string.accounts_title, 0, "6"),
         SettingsEntry(R.string.settings_account_provider_title, R.string.settings_account_provider_detail, "6"),
         SettingsEntry(R.string.settings_transitions_title, 0, "transitions"),
+        SettingsEntry(R.string.wallpaper_title, R.string.wallpaper_detail, "wallpaper"),
+        SettingsEntry(R.string.themes_title, R.string.themes_detail, "themes"),
         SettingsEntry(R.string.equalizer_title, 0, "0"),
         SettingsEntry(R.string.settings_section_data, 0, "0"),
         SettingsEntry(R.string.settings_automix_segue, R.string.settings_automix_segue_detail, "transitions"),

@@ -40,7 +40,7 @@ fun ImmersiveAlbumByIdScreen(navController: NavController, name: String, artist:
     val albumId = resolved
     when {
         albumId != null -> ImmersiveContextScreen(navController, type = "album", id = albumId)
-        failed -> Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+        failed -> Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
             ImmersiveMessageState(
                 message = stringResource(R.string.album_not_found),
                 actionLabel = stringResource(R.string.retry_button),
@@ -49,7 +49,7 @@ fun ImmersiveAlbumByIdScreen(navController: NavController, name: String, artist:
             )
             ImmersiveTopBar(title = "", collapse = { 0f }, onBack = { navController.navigateUp() })
         }
-        else -> BoxWithConstraints(Modifier.fillMaxSize().background(Immersive.Page)) {
+        else -> BoxWithConstraints(Modifier.fillMaxSize().background(Immersive.PageFill)) {
             ContextLoading(navController, sleeve = albumSleeve(maxWidth, maxHeight, com.music.spotui.ui.components.windowSize().large))
         }
     }

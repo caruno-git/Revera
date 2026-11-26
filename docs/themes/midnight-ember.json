@@ -1,0 +1,13 @@
+{
+  "name": "Midnight Ember",
+  "author": "Flavio",
+  "version": "1.0",
+  "description": "A dark theme with warm accents, in three colour schemes.",
+  "default": "Ember",
+  "scale": 1.0,
+  "schemes": {
+    "Ember": { "accent": "#FF9E3D", "background": "#120B06", "surface": "#24170E", "text": "#F6E9DD", "muted": "#B79F8B" },
+    "Sea":   { "accent": "#4FD1C5", "background": "#08141A", "surface": "#112430", "text": "#E4F3F5", "muted": "#8FB0B8" },
+    "Plum":  { "accent": "#E879F9", "background": "#150B1C", "surface": "#25152F", "text": "#F3E6F8", "muted": "#B391C0" }
+  }
+}

@@ -82,12 +82,12 @@ fun SettingsScreen(navController: NavController) {
     // Settings' search: null while closed.
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     androidx.activity.compose.BackHandler(enabled = query != null) { query = null }
-    Column(Modifier.fillMaxSize().background(AppBackground).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             IconButton(onClick = { if (sub != null) sub = null else navController.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accessibility_navigate_back), tint = AppText)
             }
-            Text(stringResource(if (sub == SUB_TRANSITIONS) R.string.settings_transitions_title else R.string.settings_title),
+            Text(stringResource(when (sub) { SUB_TRANSITIONS -> R.string.settings_transitions_title; SUB_WALLPAPER -> R.string.wallpaper_title; SUB_THEMES -> R.string.themes_title; else -> R.string.settings_title }),
                 color = AppText, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             if (sub == null) IconButton(onClick = { query = if (query == null) "" else null }) {
                 Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = stringResource(R.string.settings_search), tint = AppText)
@@ -118,7 +118,7 @@ fun SettingsScreen(navController: NavController) {
                         Column(
                             Modifier.fillMaxWidth().clickable {
                                 query = null
-                                if (h.place == SUB_TRANSITIONS) sub = SUB_TRANSITIONS else tab = h.place.toInt()
+                                if (h.place == SUB_TRANSITIONS || h.place == SUB_WALLPAPER || h.place == SUB_THEMES) sub = h.place else tab = h.place.toInt()
                             }.padding(horizontal = 20.dp, vertical = 10.dp),
                         ) {
                             Text(stringResource(h.title), color = AppText, fontSize = 16.sp)
@@ -132,6 +132,20 @@ fun SettingsScreen(navController: NavController) {
         if (sub == SUB_TRANSITIONS) {
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
                 TransitionsRow()
+                Spacer(Modifier.height(com.music.spotui.ui.components.bottomBarsSpace()))
+            }
+            return@Column
+        }
+        if (sub == SUB_THEMES) {
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
+                ThemesPage()
+                Spacer(Modifier.height(com.music.spotui.ui.components.bottomBarsSpace()))
+            }
+            return@Column
+        }
+        if (sub == SUB_WALLPAPER) {
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).navigationBarsPadding()) {
+                WallpaperPage()
                 Spacer(Modifier.height(com.music.spotui.ui.components.bottomBarsSpace()))
             }
             return@Column
@@ -227,6 +241,18 @@ fun SettingsScreen(navController: NavController) {
                 detail = stringResource(R.string.energy_saver_summary),
                 checked = energy.manualSaver,
                 onChecked = app.myspoti.power.EnergySettings::setSaver,
+            )
+            OptionRow(
+                label = stringResource(R.string.smooth_display_title),
+                detail = stringResource(R.string.smooth_display_summary),
+                checked = energy.smoothDisplay,
+                onChecked = app.myspoti.power.EnergySettings::setSmoothDisplay,
+            )
+            OptionRow(
+                label = stringResource(R.string.thermal_guard_title),
+                detail = stringResource(if (energy.policy.thermalLimited) R.string.thermal_guard_active else R.string.thermal_guard_summary),
+                checked = energy.thermalGuard,
+                onChecked = app.myspoti.power.EnergySettings::setThermalGuard,
             )
             OptionRow(
                 label = stringResource(R.string.data_saver_title),
@@ -493,6 +519,8 @@ fun SettingsScreen(navController: NavController) {
                 onChecked = { com.music.spotui.data.preferences.AppFontPref.set(ctx, it) },
             )
             LookRow()
+            WallpaperLink(onOpen = { sub = SUB_WALLPAPER })
+            ThemesLink(onOpen = { sub = SUB_THEMES })
             OrientationRow()
             LanguageRow()
             }
@@ -701,6 +729,8 @@ private fun AccentRow(look: com.music.spotui.data.preferences.Look) {
  * crossfade. The default is 0: off, as before.
  */
 private const val SUB_TRANSITIONS = "transitions"
+private const val SUB_WALLPAPER = "wallpaper"
+private const val SUB_THEMES = "themes"
 private const val TAB_SOURCES = 1
 private const val TAB_LYRICS = 2
 private const val TAB_DOWNLOADS = 3

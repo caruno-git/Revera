@@ -2019,7 +2019,9 @@ class SpotifyPlayer(private val bridge: Bridge, private val scope: CoroutineScop
         userMoveAt = clock()
         userPlays()
         outside()?.let { a -> a.next(); return }
-        if (skipsHeld) { stepIntent(1); return }
+        val movedAt = userMoveAt
+        val from = lastWithSong()?.takeIf { it.next != null }?.item?.uri
+        if (skipsHeld) { stepIntent(1); watchSkip(movedAt, from); return }
         // Another device plays: a play by name pulls the sound back to the phone (reported), only the
         // plain skip reaches that device, however long it takes to report the next song.
         val elsewhere = remoteActive
@@ -2031,8 +2033,10 @@ class SpotifyPlayer(private val bridge: Bridge, private val scope: CoroutineScop
         runCatching { withFade { command("player.next") } }.onFailure { e ->
             if (!heldError(e, base?.restrictions?.canSkipNext != false)) throw e
             stepIntent(1)
+            watchSkip(movedAt, from)
             return
         }
+        watchSkip(movedAt, from)
         // Reported (Pixel 8, beta.8): the page answers "ok" to the skip and stays on the song, so
         // the tap only dimmed the sound for a second. Still on it a moment later: the song the
         // skip pointed at is asked for by name.
@@ -2046,6 +2050,49 @@ class SpotifyPlayer(private val bridge: Bridge, private val scope: CoroutineScop
                 runCatching { playIntent() }
             }
         }
+    }
+
+    /**
+     * Reported ("it stops working, I skip and it stays on the same song, paused"): a skip the
+     * page could not take is only held, and a page that says "ok" and does nothing is asked once;
+     * if the page was dead, reloading, or answered nothing, nothing ever moved it on. After
+     * [SKIP_WATCH_MS] (and the holds' end, [SKIP_HELD_MAX_MS] at most) a song still on the one
+     * skipped from is played by name; still there after [SKIP_REPLAY_MS] more, the page is
+     * reloaded and plays on. Any later move of the user, a pause, an ad, or another device
+     * playing ends the watch. [from]: the song skipped from, null when the skip had no song after it.
+     */
+    private fun watchSkip(movedAt: Long, from: Uri?) {
+        if (from == null) return
+        scope.launch {
+            delay(SKIP_WATCH_MS)
+            var held = 0L
+            while (skipsHeld && held < SKIP_HELD_MAX_MS && userMoveAt == movedAt) { delay(1_000); held += 1_000 }
+            if (!skipStuck(movedAt, from)) return@launch
+            bridge.logger?.invoke("skip stuck: still on the same song after ${SKIP_WATCH_MS / 1000} s, playing the next one by name")
+            runCatching { replaySkip() }.onFailure { bridge.logger?.invoke("skip replay failed: ${it.message}") }
+            delay(SKIP_REPLAY_MS)
+            if (!skipStuck(movedAt, from)) return@launch
+            bridge.logger?.invoke("skip stuck for good: loading the page again")
+            val s = lastWithSong()
+            runCatching { reloadAndPlayOn(s, next = true) }.onFailure { bridge.logger?.invoke("skip reload failed: ${it.message}") }
+        }
+    }
+
+    /** The page is still on [from] (or reports nothing) after the skip, and nothing else explains it. */
+    private fun skipStuck(movedAt: Long, from: Uri): Boolean {
+        if (userMoveAt != movedAt || pausedByUser || _adPlaying.value || remoteActive || outside() != null) return false
+        val uri = lastTrackState?.item?.uri
+        return uri == null || uri == from
+    }
+
+    /** Plays the song the skip pointed at: the held intent, or the song after the last one shown. */
+    private suspend fun replaySkip() {
+        if (liveIntent() != null) { playIntent(); return }
+        val base = lastWithSong() ?: return
+        val target = base.next?.takeIf { it.kind == ItemKind.TRACK || it.kind == ItemKind.EPISODE } ?: return
+        val ctx = base.contextUri
+        if (ctx != null) playNow(ctx, trackUri = target.uri, order = lastOrder?.takeIf { it.first == ctx }?.second, origin = "skip watchdog")
+        else playNow(target.uri, origin = "skip watchdog")
     }
 
     /**
@@ -2486,6 +2533,12 @@ class SpotifyPlayer(private val bridge: Bridge, private val scope: CoroutineScop
         const val PAUSE_MS = 160L
         /** A plain skip still on its song after this: the page lost it. */
         const val NEXT_LOST_MS = 2_500L
+        /** A skip still on its song after this: the song is played by name ([watchSkip]). */
+        const val SKIP_WATCH_MS = 7_000L
+        /** Still there after this more: the page is loaded again. */
+        const val SKIP_REPLAY_MS = 6_000L
+        /** A skip held by an ad or a reload is given this long to end before the watch judges it. */
+        const val SKIP_HELD_MAX_MS = 30_000L
         /** After the refusal fallback's transfer, before the song is asked again. */
         const val REFUSAL_SETTLE_MS = 600L
         /** Never two "frozen page" reloads closer than that. */

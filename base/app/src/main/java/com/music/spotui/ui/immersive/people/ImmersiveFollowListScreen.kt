@@ -50,7 +50,7 @@ fun ImmersiveFollowListScreen(navController: NavController, userId: String, foll
     val title = stringResource(if (followers) R.string.profile_followers_title else R.string.profile_following_title)
 
     ImmersiveOverscrollHost {
-        Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+        Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(top = immersiveTopContentPadding(), bottom = Immersive.BottomChrome),

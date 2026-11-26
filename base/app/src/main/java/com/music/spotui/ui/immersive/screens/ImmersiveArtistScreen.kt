@@ -137,7 +137,7 @@ fun ImmersiveArtistScreen(navController: NavController, artistName: String, arti
 
     LaunchedEffect(artistName, artistId) { artistViewModel.loadArtistOverview(artistName, artistId) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Immersive.Page)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Immersive.PageFill)) {
         // Measured rather than read off the window, and capped against the window's own height so
         // a landscape window still shows the track list under the photo.
         // Large windows and a phone on its side: at most 45 % of the height (60 % filled the first

@@ -124,7 +124,7 @@ fun ShowScreen(navController: NavController, showId: String, showName: String = 
         )
     }
 
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         LazyColumn(
             contentPadding = PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
             modifier = Modifier.fillMaxSize(),
@@ -247,7 +247,7 @@ private fun Header(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF33322F), 0f), AppBackground)))
+            .background(Brush.verticalGradient(listOf(headerTint(Color(0xFF33322F), 0f), com.music.spotui.ui.theme.PageFade)))
             .statusBarsPadding(),
     ) {
         Box(

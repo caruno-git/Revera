@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="wallpaper_title">Wallpaper</string>
+    <string name="wallpaper_detail">A picture or a video behind every page</string>
+    <string name="wallpaper_value_off">Off</string>
+    <string name="wallpaper_value_picture">Picture</string>
+    <string name="wallpaper_value_video">Video</string>
+    <string name="wallpaper_section_source">Choose</string>
+    <string name="wallpaper_phone">From your phone</string>
+    <string name="wallpaper_phone_detail">A picture or a video; it is copied into the app, so it also plays with no connection</string>
+    <string name="wallpaper_link_title">From a link</string>
+    <string name="wallpaper_link_detail">An https address of a picture or a video</string>
+    <string name="wallpaper_link_hint">https://…</string>
+    <string name="wallpaper_link_picture">Use as a picture</string>
+    <string name="wallpaper_link_video">Use as a video</string>
+    <string name="wallpaper_link_bad">That is not an https address on a public site.</string>
+    <string name="wallpaper_section_packs">From your extensions</string>
+    <string name="wallpaper_packs_none">Extensions that offer wallpapers show them here.</string>
+    <string name="wallpaper_video_badge">Video</string>
+    <string name="wallpaper_picture_badge">Picture</string>
+    <string name="wallpaper_section_dim">Dimming</string>
+    <string name="wallpaper_dim">Dimming</string>
+    <string name="wallpaper_dim_value">%1$d%%</string>
+    <string name="wallpaper_dim_detail">The page colour covers the wallpaper, so the text stays easy to read.</string>
+    <string name="wallpaper_remove">Remove the wallpaper</string>
+    <string name="wallpaper_note">Videos play without sound, and stop when the app is not on screen or the energy saver is on. Players and full-screen covers keep their own look.</string>
+    <string name="wallpaper_hidden_black">Hidden while the black background is on.</string>
+    <string name="wallpaper_hidden_extension">Hidden: the extension this wallpaper came from is off.</string>
+    <string name="wallpaper_too_big">That file is too big (25 MB for a picture, 250 MB for a video).</string>
+    <string name="wallpaper_unsupported">That file is not a picture or a video the phone can show.</string>
+    <string name="wallpaper_failed">The file could not be read.</string>
+</resources>

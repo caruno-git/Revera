@@ -96,7 +96,7 @@ fun LocalFilesScreen(navController: NavController) {
         onDismiss = { choosingFolders = false },
     )
 
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         when {
             !granted -> EmptyState(
                 title = stringResource(R.string.local_files_empty_section_title),
@@ -114,7 +114,7 @@ fun LocalFilesScreen(navController: NavController) {
             else -> LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     Column(
-                        Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(headerTint(Color(0xFF2E5C46), 0f), AppBackground)))
+                        Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(headerTint(Color(0xFF2E5C46), 0f), com.music.spotui.ui.theme.PageFade)))
                             .statusBarsPadding().padding(horizontal = 16.dp),
                     ) {
                         Spacer(Modifier.height(56.dp))

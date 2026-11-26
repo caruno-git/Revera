@@ -1702,6 +1702,10 @@ object SongPlayer {
         }
     }
 
+    /** A song comes after the one playing (the next one, or something queued): a skip has somewhere to go. */
+    internal fun hasSongAfter(): Boolean =
+        _nowPlaying.value.next != null || (_queue.value.queued + _queue.value.nextUp).isNotEmpty()
+
     internal fun playColdStepFromNative(forward: Boolean) {
         main.post {
             val np = _nowPlaying.value

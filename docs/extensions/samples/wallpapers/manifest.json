@@ -1,0 +1,27 @@
+{
+  "id": "local.flavio.wallpapers",
+  "name": "Wallpapers",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "author": "Flavio",
+  "description": "Wallpapers for both looks, Classic and Immersive: a few ready-made pictures here, and your own pictures or silent looping videos from your phone or a link, chosen in Settings, Wallpaper. Needs a Revera build with wallpaper support (1.0.8 with the wallpaper update).",
+  "category": "look",
+  "actions": [
+    {
+      "name": "ui.style",
+      "why": "Offers wallpapers to pick in Settings, Wallpaper"
+    }
+  ],
+  "ui": {
+    "wallpapers": [
+      {
+        "title": "Earth from Apollo 17",
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/The_Earth_seen_from_Apollo_17.jpg?width=1440"
+      },
+      {
+        "title": "Pillars of Creation",
+        "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Eagle_nebula_pillars.jpg?width=1440"
+      }
+    ]
+  }
+}

@@ -136,12 +136,20 @@ fun App() {
     // its own bar (ImmersiveBottomChrome). Portrait phones keep the bottom bars.
     val rail = com.music.spotui.ui.components.windowSize().navigationRail
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+      // The wallpaper (Settings > Wallpaper): under the pages in both looks. In the Immersive look it
+      // records itself into the glass and the frost like a page, so the bars show it through.
+      com.music.spotui.ui.components.WallpaperLayer()
+      // Colours that follow the wallpaper: made again when what was kept is not for the wallpaper that is set.
+      val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+      androidx.compose.runtime.LaunchedEffect(Unit) { com.music.spotui.data.preferences.WallpaperPref.start(appContext) }
       androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
         // Before the Scaffold, in a group of its own: the nav host keeps its place when the
         // window grows or shrinks past the threshold (back stack and pages kept).
         if (rail && !immersive) com.music.spotui.ui.navigation.MainNavigationRail(navController)
         Scaffold(
             modifier = Modifier.weight(1f),
+            // See-through while a wallpaper shows (the pages' fills are too).
+            containerColor = com.music.spotui.ui.theme.PageFill,
             bottomBar = {
                 if (!immersive) MainBottomNavigation(navController)
             }
@@ -150,7 +158,7 @@ fun App() {
                 navHostController = navController,
                 // Immersive: each page marks its own list as what the glass bars blur (a source on
                 // the whole host would hold the pages' own top bars too).
-                modifier = if (immersive) Modifier.background(com.music.spotui.ui.immersive.Immersive.Page) else Modifier,
+                modifier = if (immersive) Modifier.background(com.music.spotui.ui.immersive.Immersive.PageFill) else Modifier,
             )
         }
       }

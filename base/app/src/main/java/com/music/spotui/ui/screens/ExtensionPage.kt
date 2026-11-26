@@ -83,7 +83,7 @@ fun ExtensionPageScreen(navController: NavController, id: String) {
         ) { ExtensionPageBody(id, loaded, hosts, network, any, shield.isNotEmpty()) }
         return
     }
-    Column(Modifier.fillMaxSize().background(AppBackground).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accessibility_navigate_back), tint = AppText)

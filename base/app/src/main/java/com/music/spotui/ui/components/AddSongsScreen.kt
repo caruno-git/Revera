@@ -129,7 +129,7 @@ fun AddSongsScreen(page: ContextPageModel, onClose: (added: Boolean) -> Unit) {
 
     val close = { onClose(added.isNotEmpty()) }
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(AppBackground).statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding().navigationBarsPadding().imePadding()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp)) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp).clip(CircleShape).clickable(onClick = close)) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.add_songs_close), tint = AppText)

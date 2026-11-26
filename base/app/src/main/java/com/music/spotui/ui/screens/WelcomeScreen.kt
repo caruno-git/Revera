@@ -84,7 +84,7 @@ fun WelcomeScreen(onLogin: () -> Unit) {
         alpha = v
         translationY = (1f - v) * 24.dp.toPx()
     }
-    Box(Modifier.fillMaxSize().background(AppBackground)) {
+    Box(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill)) {
         Glow(Modifier.fillMaxSize())
         Box(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 28.dp, vertical = 24.dp)) {
             Column(

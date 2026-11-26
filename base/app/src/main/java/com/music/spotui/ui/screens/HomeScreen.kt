@@ -95,9 +95,10 @@ fun HomeScreen(navController: NavController){
     val home by homeViewModel.home.collectAsState()
 
     Surface(
+        color = com.music.spotui.ui.theme.PageFill,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         val feed = (home as? Response.Success)?.data
         val hasFeed = feed != null && feed.sections.isNotEmpty()
@@ -183,7 +184,7 @@ fun HomeFeedContent(navController: NavController, feed: HomeFeedModel, facet: St
         contentPadding = PaddingValues(bottom = com.music.spotui.ui.components.bottomBarsSpace()),
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
     ) {
         // Sticky filter row: content scrolls underneath it, like the official app.
         stickyHeader {

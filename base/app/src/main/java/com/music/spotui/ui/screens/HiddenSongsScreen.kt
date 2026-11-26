@@ -51,7 +51,7 @@ import com.music.spotui.ui.theme.AppText
 fun HiddenSongsScreen(navController: NavController) {
     val context = LocalContext.current
     val songs = HiddenSongs.songs
-    Column(Modifier.fillMaxSize().background(AppBackground).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(com.music.spotui.ui.theme.PageFill).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(48.dp).clickable { navController.popBackStack() }, contentAlignment = Alignment.Center) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accessibility_navigate_back), tint = AppText)

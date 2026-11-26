@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="smooth_display_title">Smooth display</string>
+    <string name="smooth_display_summary">Ask the screen for its highest refresh rate (120 Hz) while the app is open</string>
+    <string name="thermal_guard_title">Cool down when hot</string>
+    <string name="thermal_guard_summary">When the phone reports it is warm, the app drops to 60 Hz and stops wallpaper videos and looping artwork until it cools</string>
+    <string name="thermal_guard_active">The phone is warm: 60 Hz and lighter animations for now</string>
+</resources>

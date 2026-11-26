@@ -77,7 +77,7 @@ import com.music.spotui.ui.screens.shareDiagnosticReport
 import kotlinx.coroutines.launch
 
 /** Where the Immersive Settings are: the list of categories, one category, or a choice inside it. */
-internal enum class SettingsPage { Root, Playback, Sources, Lyrics, StreamingWifi, StreamingCell, Crossfade, Downloads, DownloadQuality, Storage, Data, Display, Look, Rotation, Language, LyricsLanguage, App, Accounts, Library }
+internal enum class SettingsPage { Root, Playback, Sources, Lyrics, StreamingWifi, StreamingCell, Crossfade, Downloads, DownloadQuality, Storage, Data, Display, Look, Rotation, Language, LyricsLanguage, App, Accounts, Library, Wallpaper, Themes }
 
 private val StreamingChoices = listOf(
     Triple(StreamingQuality.AUTO, R.string.quality_streaming_auto, R.string.quality_streaming_auto_detail),
@@ -154,6 +154,8 @@ fun ImmersiveSettingsScreen(navController: NavController) {
             SettingsPage.App -> AppPage(navController, back)
             SettingsPage.Accounts -> AccountsPage(back)
             SettingsPage.Library -> LibraryPage(navController, back)
+            SettingsPage.Wallpaper -> WallpaperPage(back)
+            SettingsPage.Themes -> ThemesPage(back)
         }
     }
 }
@@ -957,6 +959,15 @@ private fun DataPage(back: () -> Unit) {
                     onChecked = app.myspoti.power.EnergySettings::setSaver, detail = stringResource(R.string.energy_saver_summary))
             }
             row {
+                ImmersiveSwitchRow(stringResource(R.string.smooth_display_title), checked = energy.smoothDisplay,
+                    onChecked = app.myspoti.power.EnergySettings::setSmoothDisplay, detail = stringResource(R.string.smooth_display_summary))
+            }
+            row {
+                ImmersiveSwitchRow(stringResource(R.string.thermal_guard_title), checked = energy.thermalGuard,
+                    onChecked = app.myspoti.power.EnergySettings::setThermalGuard,
+                    detail = stringResource(if (energy.policy.thermalLimited) R.string.thermal_guard_active else R.string.thermal_guard_summary))
+            }
+            row {
                 ImmersiveSwitchRow(stringResource(R.string.data_saver_title), checked = com.music.spotui.data.DataSaver.enabled,
                     onChecked = com.music.spotui.data.DataSaver::set, detail = stringResource(R.string.data_saver_summary))
             }
@@ -1002,6 +1013,22 @@ private fun DisplayPage(open: (SettingsPage) -> Unit, back: () -> Unit) {
                 )
             }
             row { AccentRow(com.music.spotui.data.preferences.Look.IMMERSIVE) }
+            row {
+                ImmersiveGroupRow(
+                    stringResource(R.string.wallpaper_title),
+                    detail = stringResource(R.string.wallpaper_detail),
+                    value = com.music.spotui.ui.components.wallpaperValue(),
+                    chevron = true, onClick = { open(SettingsPage.Wallpaper) },
+                )
+            }
+            row {
+                ImmersiveGroupRow(
+                    stringResource(R.string.themes_title),
+                    detail = stringResource(R.string.themes_detail),
+                    value = com.music.spotui.ui.components.themeValue(),
+                    chevron = true, onClick = { open(SettingsPage.Themes) },
+                )
+            }
             // Material You is the Classic look's: this look's colours come from the playing cover.
             if (look == com.music.spotui.data.preferences.Look.CLASSIC && com.music.spotui.data.preferences.DynamicColorPref.available) row {
                 ImmersiveSwitchRow(stringResource(R.string.settings_dynamic_color_title), checked = com.music.spotui.data.preferences.DynamicColorPref.on,

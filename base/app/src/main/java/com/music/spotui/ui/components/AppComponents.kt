@@ -70,7 +70,7 @@ fun Loader(kind: SkeletonKind = SkeletonKind.List) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Color(AppBackground.toArgb()))
+            .background(com.music.spotui.ui.theme.PageFill)
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         if (shown.value == 0f) return@Column

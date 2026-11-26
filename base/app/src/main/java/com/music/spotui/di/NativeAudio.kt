@@ -203,7 +203,7 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
         else e.play(contextUri, shuffle = shuffle)
         if (positionMs != null && positionMs > 0 && e.awaitLoaded(trackUri ?: contextUri.takeIf { it.startsWith("spotify:track:") }, since, LOAD_WAIT_MS)) e.seekTo(positionMs)
     }
-    override suspend fun pause() { queuedSteps.set(0); engine?.pause() }
+    override suspend fun pause() { lastPauseAt = System.currentTimeMillis(); queuedSteps.set(0); engine?.pause() }
     override suspend fun resume() {
         val e = ready()
         foreground()
@@ -273,14 +273,21 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
                     val delta = queuedSteps.getAndSet(0)
                     if (delta == 0) break
                     if (delta > 0) {
+                        val from = engine?.now?.value?.uri
                         repeat(delta) {
                             commandAtMs = System.currentTimeMillis()
+                            // A step that never answers (the engine hung, a lock held) used to keep
+                            // this drain "running" for ever, so every later tap only queued: a skip
+                            // that does nothing. Each step is given [STEP_TIMEOUT_MS].
                             runCatching {
-                                foreground()
-                                val e = ready()
-                                if (ensureActiveSession(e)) e.skipNext() else SongPlayer.playColdStepFromNative(forward = true)
-                            }.onFailure { log("skipNext failed: ${it.message}") }
+                                kotlinx.coroutines.withTimeout(STEP_TIMEOUT_MS) {
+                                    foreground()
+                                    val e = ready()
+                                    if (ensureActiveSession(e)) e.skipNext() else SongPlayer.playColdStepFromNative(forward = true)
+                                }
+                            }.onFailure { log("skipNext failed or hung: ${it.message}") }
                         }
+                        watchSkip(from, commandAtMs)
                     } else {
                         repeat(-delta) {
                             commandAtMs = System.currentTimeMillis()
@@ -298,6 +305,55 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
             }
         }
     }
+
+    /** When the user last paused through the engine: a pause after a skip ends the skip's watch. */
+    @Volatile private var lastPauseAt = 0L
+    private var skipWatch: kotlinx.coroutines.Job? = null
+
+    /**
+     * Reported ("I can't skip, it's like playing but it's not playing"): a skip the engine took
+     * and did nothing with. [SKIP_WATCH_MS] after the skip, a player still on [from] (or with
+     * nothing loaded) is asked to skip again; [SKIP_STEP_MS] later the next song is played by name;
+     * and if that does not move it either, the engine is left aside and the page plays the song.
+     * Any later command, a pause, or a song with nothing after it ends the watch.
+     */
+    private fun watchSkip(from: String?, at: Long) {
+        if (from == null || !SongPlayer.hasSongAfter()) return
+        skipWatch?.cancel()
+        skipWatch = scope.launch {
+            kotlinx.coroutines.delay(SKIP_WATCH_MS)
+            if (!skipStuck(from, at)) return@launch
+            log("skip stuck: ${snapshot()}; asking for the skip again")
+            runCatching { kotlinx.coroutines.withTimeout(STEP_TIMEOUT_MS) { ready().skipNext() } }
+                .onFailure { log("repeated skip failed or hung: ${it.message}") }
+            kotlinx.coroutines.delay(SKIP_STEP_MS)
+            if (!skipStuck(from, at)) return@launch
+            log("skip stuck still: ${snapshot()}; playing the next song by name")
+            SongPlayer.playColdStepFromNative(forward = true)
+            kotlinx.coroutines.delay(SKIP_STEP_MS)
+            if (!skipStuck(from, at)) return@launch
+            log("skip stuck for good: ${snapshot()}")
+            setAside("a skip did not move the engine")
+            kotlinx.coroutines.delay(600)
+            SongPlayer.playColdStepFromNative(forward = true)
+        }
+    }
+
+    private fun skipStuck(from: String, at: Long): Boolean {
+        if (commandAtMs != at || skipInFlight || lastPauseAt > at || mirrors) return false
+        val now = engine?.now?.value ?: return true
+        return now.uri == from
+    }
+
+    /** What the engine says it plays, for the log of a stuck skip. */
+    private fun snapshot(): String {
+        val n = engine?.now?.value ?: return "nothing loaded (engine ${if (engine == null) "stopped" else "up"})"
+        return "${n.name} playing=${n.playing} buffering=${n.buffering} at ${n.positionMs} ms, reported ${System.currentTimeMillis() - n.atMs} ms ago"
+    }
+
+    private const val STEP_TIMEOUT_MS = 8_000L
+    private const val SKIP_WATCH_MS = 6_000L
+    private const val SKIP_STEP_MS = 5_000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -381,6 +437,14 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
                 if (ev is EngineEvent.Failure || ev is EngineEvent.Unauthorized) log("attention: $ev")
                 // The player itself failed (the licence refused, the file unreadable): the page takes over.
                 if (ev is EngineEvent.Failure && ev.message.startsWith("player:")) setAside(ev.message)
+                // Reported (log seen): a skip put an ad next in the account's queue with no song after it
+                // the engine can reach ("ad stalled"). It stops there, shows the old song at 0:00 and
+                // every skip after that does nothing. The page plays Spotify's ad as it comes and the
+                // songs after it: it takes over now, and plays the next song.
+                if (ev is EngineEvent.Failure && ev.message.startsWith("ad stalled")) {
+                    setAside(ev.message)
+                    scope.launch { kotlinx.coroutines.delay(800); SongPlayer.playColdStepFromNative(forward = true) }
+                }
                 // The dealer closed: no command reaches the engine any more; the next use starts it again.
                 if (ev is EngineEvent.Disconnected) dropped(e)
                 if (ev is EngineEvent.ContextEnded && com.music.spotui.data.preferences.AutoplayPref.on) {

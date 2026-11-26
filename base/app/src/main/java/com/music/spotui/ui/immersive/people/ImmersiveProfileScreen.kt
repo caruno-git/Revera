@@ -109,7 +109,7 @@ fun ImmersiveProfileScreen(navController: NavController, userId: String, userNam
     val avatarUrl = p?.images?.best(300)?.url
 
     ImmersiveOverscrollHost {
-        Box(Modifier.fillMaxSize().background(Immersive.Page)) {
+        Box(Modifier.fillMaxSize().background(Immersive.PageFill)) {
             LazyColumn(
                 state = listState,
                 contentPadding = PaddingValues(bottom = Immersive.BottomChrome),

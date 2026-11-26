@@ -69,6 +69,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Star
@@ -558,6 +560,9 @@ fun ImmersivePlayer(
     var showNerd by remember { mutableStateOf(false) }
     val lyricsOpen = panel == Panel.LYRICS
     val queueOpen = panel == Panel.QUEUE
+    // The lyrics over the whole player (a button on the open lyrics): no cover, no controls. Closed with the panel.
+    var lyricsFull by rememberSaveable { mutableStateOf(false) }
+    if (lyricsFull && !lyricsOpen) lyricsFull = false
 
     // 0 with the full player, 1 with the cover in the header. Read at measure, placement and draw.
     val collapse = animateFloatAsState(
@@ -960,6 +965,44 @@ fun ImmersivePlayer(
         if (com.music.spotui.data.preferences.ImmersiveChromePref.stats && panel == Panel.NONE) {
             androidx.compose.material3.IconButton(onClick = { showNerd = true }, modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 4.dp)) {
                 androidx.compose.material3.Icon(Icons.Rounded.Equalizer, stringResource(R.string.nerd_title), tint = tint)
+            }
+        }
+        // Full-screen lyrics: a small button on the open lyrics, and the lyrics alone over the player.
+        if (lyricsOpen && !lyricsFull) {
+            val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+                if (landscape) 8.dp else DISMISS_STRIP_HEIGHT + ART_BOX_TOP_PAD + HEADER_HEIGHT + 4.dp
+            Box(
+                Modifier.align(Alignment.TopEnd).padding(top = top, end = if (landscape) 12.dp else PLAYER_GUTTER).size(38.dp)
+                    .clip(CircleShape).background(tint.copy(alpha = 0.18f))
+                    .clickable(onClickLabel = stringResource(R.string.immersive_player_lyrics_fullscreen)) { lyricsFull = true }
+                    .zIndex(3f),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Fullscreen, stringResource(R.string.immersive_player_lyrics_fullscreen), tint = tint, modifier = Modifier.size(22.dp))
+            }
+        }
+        if (lyricsFull) {
+            BackHandler { lyricsFull = false }
+            CompositionLocalProvider(LocalPlayerTint provides tint) {
+                Box(Modifier.fillMaxSize().zIndex(4f).background(androidx.compose.ui.graphics.lerp(Immersive.Page, tint, 0.22f))) {
+                    val song = com.music.spotui.di.Graph.currentSongState
+                    Column(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start = PLAYER_GUTTER, end = 64.dp, top = 12.dp)) {
+                        Text(song.title.value, color = Immersive.Text, style = Immersive.BodyStrong, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text(song.singer.value, color = Immersive.TextSecondary, style = Immersive.Caption, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                    Box(
+                        Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = 8.dp, end = PLAYER_GUTTER).size(38.dp)
+                            .clip(CircleShape).background(tint.copy(alpha = 0.18f))
+                            .clickable(onClickLabel = stringResource(R.string.immersive_player_lyrics_fullscreen_exit)) { lyricsFull = false },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.FullscreenExit, stringResource(R.string.immersive_player_lyrics_fullscreen_exit), tint = tint, modifier = Modifier.size(22.dp))
+                    }
+                    ImmersiveLyricsPanel(
+                        Modifier.fillMaxSize(),
+                        PaddingValues(start = PLAYER_GUTTER, end = PLAYER_GUTTER, top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp, bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp),
+                    )
+                }
             }
         }
         }
