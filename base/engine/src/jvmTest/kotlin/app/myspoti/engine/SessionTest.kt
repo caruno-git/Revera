@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -703,6 +704,77 @@ class SessionTest {
         rig.engine.skipNext()
         val skipPosts = rig.http.requests.count { "/player/command/" in it.url }
         assertEquals(2, skipPosts)
+    }
+
+    /** A transfer has no dealer ack of its own: it must not eat the skip's ack (reported: rapid
+     * Next taps after a takeover stayed on the last song, waiting 2.5 s for each command's guard). */
+    @Test
+    fun a_transfer_does_not_swallow_the_next_skip_ack() = runTest {
+        val rig = playing(this)
+        rig.engine.transfer()
+        rig.engine.skipNext()
+        val next = launch { rig.engine.pause() }
+        runCurrent()
+        assertFalse(next.isCompleted, "the next command waits for the dealer's echo")
+        rig.engine.handleDealerFrame(rig.replaceState(rig.advanceOf(2), paused = false, seekTo = 0))
+        runCurrent()
+        assertTrue(next.isCompleted, "the echo of the skip releases the command lock at once")
+    }
+
+    /** A takeover reports the song and position it stopped at, so the app can pull it back. */
+    @Test
+    fun another_device_taking_playback_reports_the_song_and_position() = runTest {
+        val rig = playing(this)
+        val seen = ArrayList<EngineEvent>()
+        val collect = launch { rig.engine.events.collect { seen += it } }
+        runCurrent()
+        rig.playFor(0, 40_000)
+        rig.engine.handleDealerFrame(rig.clearState())
+        runCurrent()
+        val taken = seen.filterIsInstance<EngineEvent.PlaybackTaken>().single()
+        assertEquals(rig.trackUriOf(2), taken.uri)
+        assertEquals(40_000L, taken.positionMs)
+        assertNull(rig.engine.now.value)
+        collect.cancel()
+    }
+
+    /** The end of a list reports the song it ended on: the caller's autoplay must not depend on
+     * "now", which a dealer frame taking playback away clears before the event is handled. */
+    @Test
+    fun end_of_context_event_names_the_last_song() = runTest {
+        val rig = Rig(backgroundScope)
+        rig.start()
+        val seen = ArrayList<EngineEvent>()
+        val collect = launch { rig.engine.events.collect { seen += it } }
+        runCurrent()
+        val noTransitions = kotlinx.serialization.json.JsonObject(rig.states[2].jsonObject + ("transitions" to kotlinx.serialization.json.JsonObject(emptyMap())))
+        val sm = kotlinx.serialization.json.JsonObject(rig.machine + mapOf(
+            "state_machine_id" to kotlinx.serialization.json.JsonPrimitive("end-machine"),
+            "states" to kotlinx.serialization.json.JsonArray(listOf(noTransitions)),
+        ))
+        // The PUT answer must not put the fixture's transitions back.
+        rig.http.machine = sm
+        val p = kotlinx.serialization.json.JsonObject(rig.payload + mapOf(
+            "state_machine" to sm,
+            "state_ref" to kotlinx.serialization.json.buildJsonObject {
+                put("state_index", kotlinx.serialization.json.JsonPrimitive(0))
+                put("paused", kotlinx.serialization.json.JsonPrimitive(false))
+                put("active_alias", kotlinx.serialization.json.JsonNull)
+            },
+            "seek_to" to kotlinx.serialization.json.JsonNull,
+        ))
+        val frame = kotlinx.serialization.json.JsonObject(mapOf(
+            "type" to kotlinx.serialization.json.JsonPrimitive("message"),
+            "uri" to kotlinx.serialization.json.JsonPrimitive("hm://track-playback/v1/command"),
+            "payloads" to kotlinx.serialization.json.JsonArray(listOf(p)),
+        )).toString()
+        rig.engine.handleDealerFrame(frame)
+        rig.engine.handlePlayerEvent(PlayerEvent.Ended(0))
+        runCurrent()
+        assertTrue(seen.any { it is EngineEvent.ContextEnded }, seen.toString())
+        val ended = seen.filterIsInstance<EngineEvent.ContextEnded>().single()
+        assertEquals(rig.trackUriOf(2), ended.uri)
+        collect.cancel()
     }
 
     /** A rig playing state 2 from 0, 10 s in (started_playing sent, next track preloaded). */

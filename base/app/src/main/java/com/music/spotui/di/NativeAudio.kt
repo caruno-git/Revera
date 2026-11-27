@@ -64,6 +64,17 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
 
     @Volatile private var staleDeviceIds: Set<String> = loadInitialStaleIds()
 
+    /** Songs whose radio failed and for which Spotify's own autoplay was asked once (see [started]). */
+    private val autoplayFallbackAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Last time a takeover was undone, so a device that keeps taking playback cannot loop. */
+    private var lastTakeBackAt = 0L
+
+    /** The song heard before a dealer drop, so a fresh engine can resume instead of sitting idle. */
+    private data class LastPlay(val uri: String, val contextUri: String?, val positionMs: Long, val atMs: Long)
+    @Volatile private var lastPlay: LastPlay? = null
+    private var pausedSince = 0L
+
     private fun loadInitialStaleIds(): Set<String> = runCatching {
         Graph.app.getSharedPreferences(PREFS, 0).getString(KEY_LAST_DEVICE, null)
             ?.takeIf { it.isNotBlank() }?.let { setOf(it) }.orEmpty()
@@ -129,6 +140,7 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
     }
 
     private const val ASIDE_MS = 15 * 60_000L
+    private const val TAKE_BACK_GAP_MS = 10_000L
 
     /**
      * The page's listen-sync mirror starts (an extension plays, the page plays the song unheard): the engine
@@ -269,29 +281,42 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
         if (!drainingSteps.compareAndSet(false, true)) return
         scope.launch {
             try {
-                while (true) {
+                // Once a step had to be played cold, the engine has no song to skip from: further
+                // taps in the same burst would each ask for another transfer and wait for it,
+                // keeping the screen on the last song while nothing moved (reported 1.0.9/1.0.10).
+                var coldStep = false
+                while (!coldStep) {
                     val delta = queuedSteps.getAndSet(0)
                     if (delta == 0) break
                     if (delta > 0) {
                         repeat(delta) {
+                            if (coldStep) return@repeat
                             commandAtMs = System.currentTimeMillis()
                             runCatching {
                                 foreground()
                                 val e = ready()
-                                if (ensureActiveSession(e)) e.skipNext() else SongPlayer.playColdStepFromNative(forward = true)
+                                if (ensureActiveSession(e)) e.skipNext() else {
+                                    SongPlayer.playColdStepFromNative(forward = true)
+                                    coldStep = true
+                                }
                             }.onFailure { log("skipNext failed: ${it.message}") }
                         }
                     } else {
                         repeat(-delta) {
+                            if (coldStep) return@repeat
                             commandAtMs = System.currentTimeMillis()
                             runCatching {
                                 foreground()
                                 val e = ready()
-                                if (ensureActiveSession(e)) e.previous() else SongPlayer.playColdStepFromNative(forward = false)
+                                if (ensureActiveSession(e)) e.previous() else {
+                                    SongPlayer.playColdStepFromNative(forward = false)
+                                    coldStep = true
+                                }
                             }.onFailure { log("previous failed: ${it.message}") }
                         }
                     }
                 }
+                if (coldStep) queuedSteps.set(0)
             } finally {
                 drainingSteps.set(false)
                 if (queuedSteps.get() != 0) drainSteps()
@@ -375,30 +400,104 @@ object NativeAudio : app.myspoti.spotify.AccountAudio, app.myspoti.spotify.sync.
         // the account's state follows and the engine reports it when the push comes back.
         p.onPlayerPause = { why -> log("player paused itself: $why"); scope.launch { runCatching { e.pause() } } }
         scope.launch {
+            e.now.collect { n ->
+                if (n != null && n.uri.startsWith("spotify:") && n.durationMs > 0) {
+                    val at = System.currentTimeMillis()
+                    if (n.playing) {
+                        pausedSince = 0L
+                        val pos = if (!n.buffering) n.positionMs + ((at - n.atMs) * n.speed).toLong() else n.positionMs
+                        lastPlay = LastPlay(n.uri, n.contextUri, pos.coerceAtMost(n.durationMs), at)
+                    } else if (pausedSince == 0L) pausedSince = at
+                    else if (at - pausedSince > 3_000) lastPlay = null
+                }
+            }
+        }
+        scope.launch {
             e.events.collect { ev ->
                 lastEvent = ev.toString().take(120)
                 log("event $ev")
                 if (ev is EngineEvent.Failure || ev is EngineEvent.Unauthorized) log("attention: $ev")
                 // The player itself failed (the licence refused, the file unreadable): the page takes over.
                 if (ev is EngineEvent.Failure && ev.message.startsWith("player:")) setAside(ev.message)
-                // The dealer closed: no command reaches the engine any more; the next use starts it again.
-                if (ev is EngineEvent.Disconnected) dropped(e)
-                if (ev is EngineEvent.ContextEnded && com.music.spotui.data.preferences.AutoplayPref.on) {
-                    val ended = e.now.value
-                    if (ended != null) scope.launch {
+                // The dealer closed: no command reaches the engine any more. Register a fresh one
+                // and resume the song from where it stopped; otherwise the app sat on the last
+                // song while Spotify reported "paused" (reported after 15 songs on 27/11).
+                if (ev is EngineEvent.Disconnected) {
+                    val last = lastPlay
+                    dropped(e)
+                    if (last != null) scope.launch {
+                        kotlinx.coroutines.delay(1_000)
+                        if (engine != null || !on) return@launch
                         runCatching {
+                            log("dealer closed mid-song: registering again and resuming ${last.uri}")
+                            val fresh = ready()
+                            fresh.transfer("resume")
+                            val since = fresh.clockMs()
+                            val context = last.contextUri?.takeIf { it.isNotBlank() && it != last.uri }
+                            if (context != null) fresh.play(context, last.uri) else fresh.play(last.uri)
+                            val pos = last.positionMs + (System.currentTimeMillis() - last.atMs)
+                            if (pos > 0 && fresh.awaitLoaded(last.uri, since, LOAD_WAIT_MS)) fresh.seekTo(pos)
+                        }.onFailure { log("resume after a dealer drop failed: ${it.message}") }
+                    }
+                }
+                // Another device (a Web Player or the desktop app) took playback: bring the song
+                // back to this phone unless the user picked that device here. Without this the
+                // screen stayed on the last song while the other device played (reported twice).
+                if (ev is EngineEvent.PlaybackTaken && ev.uri != null && SongPlayer.chosenRemoteId == null) {
+                    val takenUri = ev.uri.orEmpty()
+                    val takenPosition = ev.positionMs
+                    scope.launch {
+                        val at = System.currentTimeMillis()
+                        if (at - lastTakeBackAt < TAKE_BACK_GAP_MS) return@launch
+                        lastTakeBackAt = at
+                        kotlinx.coroutines.delay(500)
+                        if (engine !== e || !on || SongPlayer.chosenRemoteId != null) return@launch
+                        runCatching {
+                            log("playback taken by another device: bringing it back")
+                            e.transfer("resume")
+                            if (engine !== e) return@runCatching
+                            val since = e.clockMs()
+                            e.play(takenUri, takenUri)
+                            if (takenPosition > 0 && e.awaitLoaded(takenUri, since, LOAD_WAIT_MS)) e.seekTo(takenPosition)
+                        }.onFailure { log("taking playback back failed: ${it.message}") }
+                    }
+                }
+                if (ev is EngineEvent.ContextEnded && com.music.spotui.data.preferences.AutoplayPref.on) {
+                    val seed = ev.uri
+                    scope.launch {
+                        runCatching {
+                            // The song comes with the event: a dealer frame at the end of the
+                            // context can clear "now" before this runs (another device taking
+                            // playback), which used to skip autoplay and leave the app on its
+                            // last song. Only a different song already playing here cancels it.
+                            fun stillOnEndedSong() = engine === e && e.now.value?.uri.let { it == null || it == seed }
+                            if (!stillOnEndedSong()) return@runCatching
                             val radio = kotlinx.coroutines.withTimeout(10_000) {
-                                spotify.extras.radio(ended.uri) ?: error("radio unavailable")
+                                spotify.extras.radio(seed) ?: error("radio unavailable")
                             }
-                            if (engine !== e || e.now.value != ended) return@runCatching
+                            if (!stillOnEndedSong()) return@runCatching
                             val tracks = kotlinx.coroutines.withTimeout(10_000) {
                                 spotify.playlists.tracks(radio, 0, 30).items
-                            }.filter { it.uri != ended.uri && it.uri.startsWith("spotify:track:") }
-                            if (engine !== e || e.now.value != ended) return@runCatching
+                            }.filter { it.uri != seed && it.uri.startsWith("spotify:track:") }
+                            if (!stillOnEndedSong()) return@runCatching
                             val first = tracks.firstOrNull() ?: error("radio returned no next song")
                             log("autoplay: continuing in song radio")
                             e.play(radio, first.uri)
-                        }.onFailure { log("autoplay failed: ${it.javaClass.simpleName}") }
+                        }.onFailure { t ->
+                            log("autoplay failed: ${t.javaClass.simpleName}: ${t.message}")
+                            // A radio we could not ask must not end the music. The song alone
+                            // lets Spotify's own autoplay choose what comes next; once per song
+                            // so a radio that keeps failing cannot loop on the same track.
+                            val now = System.currentTimeMillis()
+                            if (now - (autoplayFallbackAt[seed] ?: 0L) > 60_000) {
+                                if (autoplayFallbackAt.size > 64) autoplayFallbackAt.clear()
+                                autoplayFallbackAt[seed] = now
+                                scope.launch {
+                                    runCatching { if (engine === e) e.play(seed) }
+                                        .onFailure { log("autoplay fallback failed: ${it.message}") }
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -28,7 +28,20 @@ sealed class EngineEvent {
     data class Preloaded(val uri: String) : EngineEvent()
     /** A server-inserted ad is current. The engine fetches and reports nothing for it (ADS.md). */
     data class AdBreak(val uri: String, val durationMs: Long) : EngineEvent()
-    object ContextEnded : EngineEvent()
+
+    /**
+     * Again, note here:
+     * Another Connect device took playback, the server cleared this device's state, so the player
+     * stopped and [now] is gone. The song and position are carried so the caller can bring it back.
+     */
+    data class PlaybackTaken(val uri: String?, val positionMs: Long) : EngineEvent()
+
+    /**
+     * The state machine has no song after this one. The uri comes with the event: a dealer frame
+     * at the end of a context can clear [now] before the caller handles it, and the song to carry
+     * on from must not depend on that race.
+     */
+    data class ContextEnded(val uri: String, val contextUri: String?) : EngineEvent()
     data class TokenRefreshed(val url: String) : EngineEvent()
     data class Unauthorized(val url: String) : EngineEvent()
     data class RateLimited(val url: String, val retryAfterMs: Long, val attempt: Int) : EngineEvent()
@@ -442,13 +455,17 @@ class NativeEngine(
         val sm = cmd.stateMachine
         val index = cmd.stateRef?.stateIndex
         if (sm == null || sm.states.isEmpty() || index == null || index !in sm.states.indices) {
-            ackCommand()
             // Playback moved to another device: `state_clear` with no state_ref (connect capture).
+            // Remember the song before the state is cleared: the caller needs it to pull playback back.
+            val takenUri = current?.track?.metadata?.uri
+            val takenPosition = current?.lastPosition ?: 0L
+            ackCommand()
             current?.let { finalize(it, "remote", null); player.stop() }
             current = null
             machine = null
             _playsElsewhere.value = true
             publishNow(null, 0, false)
+            emit(EngineEvent.PlaybackTaken(takenUri, takenPosition))
             putState(null, null, false, null, null, "state_clear")
             return
         }
@@ -538,9 +555,19 @@ class NativeEngine(
         )
     }
 
-    /** `jssdk_connect_command` once the server's push for our command arrived (ack duration = POST to push). */
+    /**
+     * `jssdk_connect_command` once the server's push for our command arrived (ack duration = POST
+     * to push). A transfer is sent outside [command] and never receives such a push: it must not
+     * sit at the head of [pendingCommands] and swallow the ack of the next command. Doing that
+     * left the command lock held until its 2.5 s guard, so a burst of Next taps (each preceded by
+     * a transfer when the engine had no song) took seconds per song and looked like a freeze.
+     */
     private suspend fun ackCommand(atMs: Long = env.nowMs()) {
-        val c = pendingCommands.removeFirstOrNull() ?: return
+        while (pendingCommands.firstOrNull()?.unlocks == false) reportCommand(pendingCommands.removeFirst(), atMs)
+        pendingCommands.removeFirstOrNull()?.let { reportCommand(it, atMs) }
+    }
+
+    private suspend fun reportCommand(c: SentCommand, atMs: Long) {
         try {
             val msg = Reports.connectCommand(c.type, c.id, atMs - c.sentAt, c.latency, tokens.accessToken().clientId, deviceId, c.status)
             melody(listOf(Bodies.melodyMessage("jssdk_connect_command", msg)), config.harmonyVersion)
@@ -856,7 +883,7 @@ class NativeEngine(
         current = null
         if (next == null || nextState == null || nextTrack == null) {
             player.stop()
-            emit(EngineEvent.ContextEnded)
+            emit(EngineEvent.ContextEnded(p.track.metadata.uri, p.track.metadata.contextUri))
             return
         }
         stateIndex = machine?.states?.indexOfFirst { it.id == nextState.id } ?: -1

@@ -2303,6 +2303,22 @@ object SongPlayer {
             if (backToExtensions(t, trackIdOf(_nowPlaying.value.uri), upcomingSongs(t), fallback = ::sendNext)) return
         }
         if (!isEpisode && refusedWithoutAccountPlayer(null, trackIdOf(_nowPlaying.value.uri))) return
+        
+        /*
+            Note here: Another device took playback without being picked here: its commands are refused on a free account.
+            Bring the music back before skipping, instead of leaving the screen on the last song (reported after 10 and again after 19 songs).
+        */
+        if (NativeAudio.on && _activeDevice.value != null && chosenRemote == null) {
+            scope.launch {
+                takeBackPlayback()
+                if (_activeDevice.value == null)
+                    sendNext()
+                else transport(pullBack = false, checkAfter = true) {
+                    api.player.next()
+                }
+            }
+            return
+        }
         sendNext()
     }
 
@@ -3111,8 +3127,19 @@ object SongPlayer {
             // Nor the 0 of a device muted for an ad (RemoteAdMute): the bar keeps the user's level.
             active?.volume?.takeIf { it >= 0 }?.let { if (SystemClock.elapsedRealtime() > volumeHoldUntil && !com.music.spotui.connect.RemoteAdMute.muting) { _remoteVolume.intValue = (it * 100).toInt().coerceIn(0, 100); remoteVolumeOf = active.id } }
             PlaybackService.setPlaybackDevice(_activeDevice.value != null, remoteVolume)
+            // A device took playback without being picked here: on the next track change bring it
+            // back instead of leaving the screen on the last song (reported repeatedly with a
+            // foreign Web Player). A transfer alone does not change play/pause, so this cannot
+            // start music the user had paused.
+            if (_activeDevice.value != null && chosenRemote == null && NativeAudio.on &&
+                SystemClock.elapsedRealtime() - lastAutoPullAt > AUTO_PULL_MS) {
+                lastAutoPullAt = SystemClock.elapsedRealtime()
+                takeBackPlayback()
+            }
         }
     }
+
+    private const val AUTO_PULL_MS = 60_000L
 
     /** Devices of the account, this phone first. */
     suspend fun devices(): List<ConnectDevice> {
@@ -3164,6 +3191,8 @@ object SongPlayer {
      */
     /** When [takeBackPlayback] last read the device list; 0 = never read (read it now). */
     @Volatile private var devicesFreshUntil = 0L
+    /** Debounce for a device that took playback while we were listening here. */
+    @Volatile private var lastAutoPullAt = 0L
 
     private suspend fun takeBackPlayback() {
         // The device list as Spotify has it now: the one kept here is only refreshed on a song

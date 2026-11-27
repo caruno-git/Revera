@@ -2,6 +2,10 @@
 
 Each release on GitHub shows its section below. The app shows it too when it offers the update. Every detail: [docs/CHANGELOG-full.md](docs/CHANGELOG-full.md).
 
+## Unreleased
+
+- **Native Spotify playback**: fixes playback stopping on the last song of a list. The end-of-list event now carries the song so autoplay survives a device change, a Connect transfer no longer holds up the next command's acknowledgement (rapid Next taps no longer wait seconds per song), a device that takes playback without being picked here is undone so the music comes back to the phone, and a dropped dealer connection re-registers and resumes the song from where it stopped even when the app was marked paused.
+
 ## 1.0.10
 
 - **Spotify playback**: Pause now controls the Web Player when it is playing instead of sending the command to an idle native engine.
