@@ -170,7 +170,8 @@ object DiagnosticReport {
         val installAge = info?.firstInstallTime?.let { ageBucket(System.currentTimeMillis() - it) }
             ?.let { age -> listOfNotNull(age, signedInAge).joinToString(", ") }
         val summary = app.myspoti.spotify.report.Refusal402.summary(facts["account"], installAge)
-        // Masked and cut down (DiagnosticDigest): small enough to paste, nothing that opens an account.
+        // logcat() already masks secrets. Keep its complete available history in the export:
+        // DiagnosticDigest's caps can discard the failure that prompted the report.
         return buildString {
             appendLine("Myspoti diagnostic report")
             // The 402 questions answered in one screen (Refusal402), before anything else.
@@ -189,7 +190,7 @@ object DiagnosticReport {
             }
             appendLine()
             appendLine("--- log ---")
-            append(app.myspoti.spotify.report.DiagnosticDigest.digest(tail))
+            tail.forEach { appendLine(it) }
         }
     }
 }
