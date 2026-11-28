@@ -175,6 +175,12 @@ Every push builds and tests on GitHub Actions. A `vX.Y.Z` tag publishes a stable
 
 ## Credits
 
+### Contributors
+
+- **carunodev** ([@caruno-git](https://github.com/caruno-git))
+- **Not-a-dude** ([@Not-a-dude](https://github.com/Not-a-dude))
+- **DgM** ([@doggywatty](https://github.com/doggywatty))
+
 ### BitChord
 
 Orpheon owes a lot to [BitChord](https://github.com/kushagrasinghx/BitChord) by kushagrasinghx and its contributors (GPL-3.0-or-later), in code:
