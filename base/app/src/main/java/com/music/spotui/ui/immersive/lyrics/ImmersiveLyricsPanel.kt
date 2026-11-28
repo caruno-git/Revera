@@ -639,7 +639,7 @@ private fun LyricsList(
                 since = since,
                 // Reading to pick lines flattens the stack the way reading by hand does.
                 browsing = browsing || selecting,
-                blurOk = blurOk,
+                blurOk = blurOk && com.music.spotui.data.preferences.LyricsBlurPref.on,
                 glowing = blurOk,
                 clock = clock,
                 noteMeasurer = noteMeasurer,

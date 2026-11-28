@@ -62,6 +62,18 @@ object LyricsRomanizationPref {
     }
 }
 
+/** Blur inactive lyrics in the Immersive player. Read as state so changes apply immediately. */
+object LyricsBlurPref {
+    private const val KEY = "lyrics_blur"
+    var on by androidx.compose.runtime.mutableStateOf(prefs(com.music.spotui.di.Graph.app).getBoolean(KEY, true))
+        private set
+
+    fun set(c: Context, value: Boolean) {
+        on = value
+        prefs(c).edit().putBoolean(KEY, value).apply()
+    }
+}
+
 object LyricsTranslateButtonPref {
     private const val KEY = "lyrics_translate_button_visible"
     var on by androidx.compose.runtime.mutableStateOf(prefs(com.music.spotui.di.Graph.app).getBoolean(KEY, true))

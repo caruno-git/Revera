@@ -345,6 +345,12 @@ fun SettingsScreen(navController: NavController) {
                 checked = com.music.spotui.data.preferences.LyricsTranslateButtonPref.on,
                 onChecked = { com.music.spotui.data.preferences.LyricsTranslateButtonPref.set(ctx, it) },
             )
+            OptionRow(
+                label = stringResource(R.string.settings_lyrics_blur_title),
+                detail = stringResource(R.string.settings_lyrics_blur_detail),
+                checked = com.music.spotui.data.preferences.LyricsBlurPref.on,
+                onChecked = { com.music.spotui.data.preferences.LyricsBlurPref.set(ctx, it) },
+            )
             LyricsTranslationRow()
             com.music.spotui.ui.components.LyricsAppearanceControls()
             }

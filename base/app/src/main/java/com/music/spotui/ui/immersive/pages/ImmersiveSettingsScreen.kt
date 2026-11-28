@@ -508,6 +508,14 @@ internal fun LyricsPage(open: (SettingsPage) -> Unit, back: () -> Unit) {
     ImmersivePage(title = stringResource(R.string.settings_section_lyrics), onBack = back) {
         immersiveGroup("lyrics") {
             row { com.music.spotui.ui.components.LyricsAppearanceControls() }
+            row {
+                ImmersiveSwitchRow(
+                    stringResource(R.string.settings_lyrics_blur_title),
+                    checked = com.music.spotui.data.preferences.LyricsBlurPref.on,
+                    onChecked = { com.music.spotui.data.preferences.LyricsBlurPref.set(ctx, it) },
+                    detail = stringResource(R.string.settings_lyrics_blur_detail),
+                )
+            }
             // Lyrics: word by word (karaoke) first, or line by line with Spotify's first.
             row {
                 ImmersiveSwitchRow(

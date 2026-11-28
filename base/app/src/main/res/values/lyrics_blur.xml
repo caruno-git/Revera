@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_lyrics_blur_title">Blur inactive lyrics</string>
+    <string name="settings_lyrics_blur_detail">Blur inactive lines and their translations in Immersive.</string>
+</resources>
